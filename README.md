@@ -42,6 +42,11 @@ cd QHDOPT/
 pip install ".[all]"
 ```
 
+Finally, run the following in your conda environment:
+```
+conda install -c conda-forge cyipopt
+```
+
 ## Usage
 
 Two example notebooks for a jump start are `examples/QP-example.ipynb` and `examples/PO-example.ipynb`. The following illustrates the basic building blocks of QHDOPT and their functionalities briefly.
