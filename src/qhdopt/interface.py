@@ -361,9 +361,13 @@ class QHD:
         dwp.run(shots=self.shots)
         self.info["time_end_backend"] = time.time()
         self.info["average_qpu_time"] = dwp.avg_qpu_time
-        if verbose > 1:
+        self.info["time_on_machine"] = dwp.time_on_machine
+        self.info["overhead_time"] = self.info["time_end_backend"] - self.info["time_end_compile"] - self.info["time_on_machine"]
+        if verbose >= 1:
             print("Received Task from D-Wave:")
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
+            print(f"Backend QPU Time: {self.info['time_on_machine']}")
+            print(f"Overhead Time: {self.info['overhead_time']}")
 
         self.raw_result = dwp.results()
         raw_samples = []
