@@ -5,7 +5,7 @@
 QHDOPT implements a quantum optimization algorithm named [Quantum Hamiltonian Descent](https://jiaqileng.github.io/quantum-hamiltonian-descent/) (QHD) on available quantum computers (such as the [D-Wave systems](https://www.dwavesys.com/)). QHD is a quantum-upgraded version of gradient descent (GD). Unlike the classical GD, QHD demonstrates a significant advantage in solving nonconvex optimization problems.
 
 <p align="center">
-<img src="img/schematic.png" alt="QHDOPT Workflow" width="600">
+<img src="img/workflow.png" alt="QHDOPT Workflow" width="600">
 </p>
 
 ## Why QHDOPT?
@@ -17,11 +17,11 @@ QHDOPT aims to eliminate the technical barrier of using QHD for the broader oper
 - Researchers who hope to advance the theory and algorithms of optimization via quantum technologies,
 - Experts in quantum computation who want to experiment with hyperparameters and/or encodings in QHD to achieve even better practical performance.
 
-#### Fast compilation powered by SimuQ
-QHDOPT has a built-in compiler powered by [SimuQ](https://github.com/PicksPeng/SimuQ), a domain-specific language for quantum simulation.
+#### Fast compilation empowered by SimuQ
+QHDOPT has a built-in compiler powered by [SimuQ](https://github.com/PicksPeng/SimuQ), a framework for programming and compiling quantum Hamiltonian systems.
 
 #### Automatic post-processing
-QHDOPT automatically post-processes the results returned by the quantum machines (of course, users may turn off post-processing if needed). The post-processing step relies on a fast Scipy optimizer (TNC) to improve the quality of final solutions due to the limited quantum resources.
+QHDOPT automatically post-processes the results returned by the quantum machines. The post-processing includes decoding the raw measurement results and improving their precision (i.e., fine-tuning) via a classical local solver. Users may disable the fine-tuning if needed.
 
 ## Installation
 
