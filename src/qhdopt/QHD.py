@@ -5,58 +5,55 @@ import cyipopt
 import jax.numpy as jnp
 import numpy as np
 import qutip as qtp
+from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
+    gen_new_func_with_affine_trans, generate_bounds
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from simuq import QSystem, Qubit, hlist_sum
 from simuq.dwave.dwave_provider import DWaveProvider
 from simuq.ionq import IonQAPICircuit, IonQProvider
 from simuq.qutip import QuTiPProvider
-from sympy import N, expand, lambdify, symbols
+from sympy import lambdify, symbols
 
 
 class QHD:
     def __init__(
-        self,
-        func,
-        syms,
-        bounds=None,
-        custom_ordering=lambda sym: str(sym),
+            self,
+            func,
+            syms,
+            bounds=None,
     ):
+        self.qubits = None
+        self.qs = None
+        self.univariate_dict = None
+        self.bivariate_dict = None
         self.raw_result = None
-        self.lambda_numpy = lambdify(syms, func, jnp)
-        self.list_of_symbols = syms
-        self.dimension = len(func.free_symbols)
         self.qhd_samples = None
         self.post_processed_samples = None
-        self.custom_ordering = custom_ordering
         self.info = dict()
+        self.syms = syms
+        self.func = func
+        self.bounds = bounds
+        self.lambda_numpy = lambdify(syms, func, jnp)
+        self.dimension = len(func.free_symbols)
 
-        if bounds is None:
-            self.lb = [0] * self.dimension
-            self.scaling_factor = [1] * self.dimension
-        elif isinstance(bounds, tuple):
-            self.lb = [bounds[0]] * self.dimension
-            self.scaling_factor = [bounds[1] - bounds[0]] * self.dimension
-        elif isinstance(bounds, list):
-            self.lb = [bounds[i][0] for i in range(self.dimension)]
-            self.scaling_factor = [bounds[i][1] - bounds[i][0]] * self.dimension
-        else:
-            raise Exception(
-                "Unsupported bounds type. Try: (lb, ub) or [(lb1, ub1), ..., (lbn, ubn)]."
-            )
-        self.univariate_dict, self.bivariate_dict = self.decompose_function(func)
+    def generate_univariate_bivariate_repr(self):
+        self.lb, self.scaling_factor = generate_bounds(self.bounds, self.dimension)
+        affine_transformation = gen_affine_transformation(self.scaling_factor, self.lb)
+        func, syms = gen_new_func_with_affine_trans(affine_transformation, self.func, self.syms)
+        self.univariate_dict, self.bivariate_dict = decompose_function(func, syms)
 
     @classmethod
-    def SymPy(cls, func, syms, bounds=None, custom_ordering=lambda sym: str(sym)):
-        return cls(func, syms, bounds, custom_ordering)
+    def SymPy(cls, func, syms, bounds=None):
+        return cls(func, syms, bounds)
 
     @classmethod
     def QP(cls, Q, b, bounds=None):
-        f, xl = cls.quad_to_gen(Q, b)
+        f, xl = QHD.quad_to_gen(Q, b)
         return cls(f, xl, bounds)
 
-    @classmethod
-    def quad_to_gen(cls, Q, b):
+    @staticmethod
+    def quad_to_gen(Q, b):
         x = symbols(f"x:{len(Q)}")
         f = 0
         for i in range(len(Q)):
@@ -73,18 +70,20 @@ class QHD:
         return f, list(x)
 
     def dwave_setup(
-        self,
-        resolution,
-        shots=100,
-        api_key=None,
-        api_key_from_file=None,
-        embedding_scheme="unary",
-        anneal_schedule=[[0, 0], [20, 1]],
-        penalty_coefficient=0,
-        chain_strength=5e-2,
-        penalty_ratio=0.75,
-        post_processing_method="TNC",
+            self,
+            resolution,
+            shots=100,
+            api_key=None,
+            api_key_from_file=None,
+            embedding_scheme="unary",
+            anneal_schedule=None,
+            penalty_coefficient=0,
+            chain_strength=None,
+            penalty_ratio=0.75,
+            post_processing_method="TNC",
     ):
+        if anneal_schedule is None:
+            anneal_schedule = [[0, 0], [20, 1]]
         self.backend = "dwave"
         self.r, self.resolution = resolution, resolution
         self.shots = shots
@@ -100,16 +99,16 @@ class QHD:
         self.post_processing_method = post_processing_method
 
     def ionq_setup(
-        self,
-        resolution,
-        shots=100,
-        api_key=None,
-        api_key_from_file=None,
-        embedding_scheme="onehot",
-        penalty_coefficient=0,
-        time_discretization=10,
-        gamma=5,
-        post_processing_method="TNC",
+            self,
+            resolution,
+            shots=100,
+            api_key=None,
+            api_key_from_file=None,
+            embedding_scheme="onehot",
+            penalty_coefficient=0,
+            time_discretization=10,
+            gamma=5,
+            post_processing_method="TNC",
     ):
         self.backend = "ionq"
         self.r, self.resolution = resolution, resolution
@@ -125,14 +124,14 @@ class QHD:
         self.post_processing_method = post_processing_method
 
     def qutip_setup(
-        self,
-        resolution,
-        shots=100,
-        embedding_scheme="onehot",
-        penalty_coefficient=0,
-        time_discretization=10,
-        gamma=5,
-        post_processing_method="TNC",
+            self,
+            resolution,
+            shots=100,
+            embedding_scheme="onehot",
+            penalty_coefficient=0,
+            time_discretization=10,
+            gamma=5,
+            post_processing_method="TNC",
     ):
         self.backend = "qutip"
         self.r, self.resolution = resolution, resolution
@@ -142,68 +141,6 @@ class QHD:
         self.discre, self.discretization = time_discretization, time_discretization
         self.gamma = gamma
         self.post_processing_method = post_processing_method
-
-    # Function to decompose a given function into univariate, bivariate, and trivariate parts
-    def decompose_function(self, func):
-        # Expand the function to simplify the decomposition
-        affine_transformation_vars = list(
-            self.affine_transformation(np.array(self.list_of_symbols))
-        )
-        func = func.subs(zip(self.list_of_symbols, affine_transformation_vars))
-        lambdify_numpy = lambda free_vars, f: lambdify(free_vars, f, "numpy")
-        symbol_to_int = {
-            self.list_of_symbols[i]: i + 1 for i in range(len(self.list_of_symbols))
-        }
-        func_expanded = expand(func)
-
-        # Containers for different parts
-        univariate_terms, bivariate_terms = {}, {}
-
-        # Iterate over the terms in the expanded form
-        for term in func_expanded.as_ordered_terms():
-            # Check the variables in the term
-            vars_in_term = term.free_symbols
-
-            # Classify the term based on the number of variables it contains
-            if len(vars_in_term) == 1:
-                single_var_index = symbol_to_int[list(vars_in_term)[0]]
-                univariate_terms.setdefault(single_var_index, []).append(term)
-            elif len(vars_in_term) == 2:
-                index1, index2 = sorted(
-                    [symbol_to_int[sym] for sym in list(vars_in_term)]
-                )
-
-                factors = term.as_ordered_factors()
-                coefficient = 1
-                i = 0
-                while len(factors[i].free_symbols) == 0:
-                    coefficient *= float(N(factors[i]))
-                    i += 1
-
-                f1, f2 = sorted(
-                    [factors[i] for i in range(i, len(factors))],
-                    key=lambda factor: symbol_to_int[list(factor.free_symbols)[0]],
-                )
-                bivariate_terms.setdefault((index1, index2), []).append(
-                    (
-                        coefficient,
-                        lambdify_numpy(list(f1.free_symbols), f1),
-                        lambdify_numpy(list(f2.free_symbols), f2),
-                    )
-                )
-            elif len(vars_in_term) > 2:
-                raise Exception(
-                    f"The specified function has {len(vars_in_term)} variable term "
-                    f"which is currently unsupported by QHD."
-                )
-
-        # Combine the terms to form each part
-        univariate_part = {
-            var: (1, lambdify_numpy(list(terms[0].free_symbols), sum(terms)))
-            for var, terms in univariate_terms.items()
-        }
-
-        return univariate_part, bivariate_terms
 
     def affine_transformation(self, x):
         return self.scaling_factor * x + self.lb
@@ -220,9 +157,9 @@ class QHD:
             ]
         )
         return (
-            (-1) * qubits[k * self.r].Z
-            + qubits[(k + 1) * self.r - 1].Z
-            - unary_penalty_sum(k)
+                (-1) * qubits[k * self.r].Z
+                + qubits[(k + 1) * self.r - 1].Z
+                - unary_penalty_sum(k)
         )
 
     def H_pen(self, qubits=None):
@@ -250,18 +187,18 @@ class QHD:
                     [
                         0.5
                         * (
-                            qubits[j].X * qubits[j + 1].X
-                            + qubits[j].Y * qubits[j + 1].Y
+                                qubits[j].X * qubits[j + 1].X
+                                + qubits[j].Y * qubits[j + 1].Y
                         )
                         for j in range(k * self.r, (k + 1) * self.r - 1)
                     ]
                 )
 
-            return (-0.5 * self.r**2) * hlist_sum(
+            return (-0.5 * self.r ** 2) * hlist_sum(
                 [onehot_driving_sum(p) for p in range(self.dimension)]
             )
         else:
-            return (-0.5 * self.r**2) * hlist_sum([qubit.X for qubit in qubits])
+            return (-0.5 * self.r ** 2) * hlist_sum([qubit.X for qubit in qubits])
 
     def H_p(self, qubits=None):
         if qubits is None:
@@ -277,7 +214,7 @@ class QHD:
         def get_ham(d, lmda):
             def n_j(d, j):
                 return 0.5 * (
-                    qubits[(d - 1) * self.r + j].I - qubits[(d - 1) * self.r + j].Z
+                        qubits[(d - 1) * self.r + j].I - qubits[(d - 1) * self.r + j].Z
                 )
 
             if self.embedding_scheme == "unary":
@@ -362,7 +299,8 @@ class QHD:
         self.info["time_end_backend"] = time.time()
         self.info["average_qpu_time"] = dwp.avg_qpu_time
         self.info["time_on_machine"] = dwp.time_on_machine
-        self.info["overhead_time"] = self.info["time_end_backend"] - self.info["time_end_compile"] - self.info["time_on_machine"]
+        self.info["overhead_time"] = self.info["time_end_backend"] - self.info["time_end_compile"] - \
+                                     self.info["time_on_machine"]
         if verbose >= 1:
             print("Received Task from D-Wave:")
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
@@ -383,7 +321,7 @@ class QHD:
 
             if n > 1:
                 amplitudes_left = amplitudes[: int(n / 2)]
-                amplitudes_right = amplitudes[int(n / 2) :]
+                amplitudes_right = amplitudes[int(n / 2):]
                 a = np.linalg.norm(amplitudes_left)
 
                 if np.linalg.norm(amplitudes_right) > 0:
@@ -439,8 +377,8 @@ class QHD:
             raise Exception("IonQ backend must use one-hot embedding.")
 
         self.qs.add_evolution(10 * self.H_k(), 1)
-        phi1 = lambda t: self.gamma / (1 + self.gamma * (t**2))
-        phi2 = lambda t: self.gamma * (1 + self.gamma * (t**2))
+        phi1 = lambda t: self.gamma / (1 + self.gamma * (t ** 2))
+        phi2 = lambda t: self.gamma * (1 + self.gamma * (t ** 2))
         Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p()
         self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.discre))
 
@@ -480,8 +418,8 @@ class QHD:
             raise Exception("QuTiP simulation must use one-hot embedding.")
 
         self.qs.add_evolution(10 * self.H_k(), 1)
-        phi1 = lambda t: self.gamma / (1 + self.gamma * (t**2))
-        phi2 = lambda t: self.gamma * (1 + self.gamma * (t**2))
+        phi1 = lambda t: self.gamma / (1 + self.gamma * (t ** 2))
+        phi2 = lambda t: self.gamma * (1 + self.gamma * (t ** 2))
         Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p()
         self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.discre))
 
@@ -532,7 +470,7 @@ class QHD:
     def hamming_bitstring_to_vec(bitstring, d, r):
         sample = np.zeros(d)
         for i in range(d):
-            sample[i] = sum(bitstring[i * r : (i + 1) * r]) / r
+            sample[i] = sum(bitstring[i * r: (i + 1) * r]) / r
         return sample
 
     @staticmethod
@@ -540,7 +478,7 @@ class QHD:
         sample = np.zeros(d)
 
         for i in range(d):
-            x_i = bitstring[i * r : (i + 1) * r]
+            x_i = bitstring[i * r: (i + 1) * r]
 
             in_low_energy_subspace = True
             for j in range(r - 1):
@@ -559,7 +497,7 @@ class QHD:
         sample = np.zeros(d)
 
         for i in range(d):
-            x_i = bitstring[i * r : (i + 1) * r]
+            x_i = bitstring[i * r: (i + 1) * r]
             if sum(x_i) != 1:
                 return None
             else:
@@ -652,7 +590,7 @@ class QHD:
         succ_cnt = 0
         tol_rate = 0.05
         thres = self.info["refined_minimum"] + tol_rate * (
-            1e-5 + abs(self.info["refined_minimum"])
+                1e-5 + abs(self.info["refined_minimum"])
         )
         for x in self.post_processed_samples:
             if x is not None:
@@ -663,13 +601,15 @@ class QHD:
     def optimize(self, fine_tune=True, verbose=0):
         self.qs = QSystem()
         self.qubits = [Qubit(self.qs) for _ in range(self.dimension * self.r)]
-
+        self.generate_univariate_bivariate_repr()
         if self.backend == "dwave":
             raw_samples = self.dwave_exec(verbose=verbose)
         elif self.backend == "ionq":
             raw_samples = self.ionq_exec(verbose=verbose, with_noise=True)
         elif self.backend == "qutip":
             raw_samples = self.qutip_exec(verbose=verbose)
+        else:
+            raise Exception("Unsupported Backend.")
 
         self.raw_samples = raw_samples
 
@@ -714,7 +654,7 @@ class QHD:
 
     def print_time_info(self):
         compilation_time = (
-            self.info["time_end_compile"] - self.info["time_start_compile"]
+                self.info["time_end_compile"] - self.info["time_start_compile"]
         )
         backend_time = self.info["time_end_backend"] - self.info["time_end_compile"]
         decoding_time = self.info["time_end_decoding"] - self.info["time_end_backend"]
@@ -727,7 +667,7 @@ class QHD:
         print(f"Decoding time: {decoding_time:.3f} s")
         if self.info["fine_tune_status"]:
             finetuning_time = (
-                self.info["time_end_finetuning"] - self.info["time_end_decoding"]
+                    self.info["time_end_finetuning"] - self.info["time_end_decoding"]
             )
             print(f"Fine-tuning time: {finetuning_time:.3f} s")
             total_runtime += finetuning_time
