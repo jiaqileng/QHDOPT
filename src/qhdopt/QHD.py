@@ -7,6 +7,7 @@ import numpy as np
 import qutip as qtp
 from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
     gen_new_func_with_affine_trans, generate_bounds
+from qhdopt.dwave_backend import DwaveBackend
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from simuq import QSystem, Qubit, hlist_sum
