@@ -7,7 +7,6 @@ import numpy as np
 import qutip as qtp
 from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
     gen_new_func_with_affine_trans, generate_bounds
-from qhdopt.dwave_backend import DwaveBackend
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from simuq import QSystem, Qubit, hlist_sum
@@ -120,7 +119,7 @@ class QHD:
                 self.api_key = f.readline().strip()
         self.embedding_scheme = embedding_scheme
         self.penalty_coefficient = penalty_coefficient
-        self.discre, self.discretization = time_discretization, time_discretization
+        self.discre, self.time_discretization = time_discretization, time_discretization
         self.gamma = gamma
         self.post_processing_method = post_processing_method
 
@@ -139,7 +138,7 @@ class QHD:
         self.shots = shots
         self.embedding_scheme = embedding_scheme
         self.penalty_coefficient = penalty_coefficient
-        self.discre, self.discretization = time_discretization, time_discretization
+        self.time_discretization = time_discretization
         self.gamma = gamma
         self.post_processing_method = post_processing_method
 
@@ -202,8 +201,6 @@ class QHD:
             return (-0.5 * self.r ** 2) * hlist_sum([qubit.X for qubit in qubits])
 
     def H_p(self, qubits=None):
-        if qubits is None:
-            qubits = self.qubits
 
         # Encoding of the X operator as defined in (F.16) in https://browse.arxiv.org/pdf/2303.01471.pdf
         def Enc_X(k):
@@ -381,7 +378,7 @@ class QHD:
         phi1 = lambda t: self.gamma / (1 + self.gamma * (t ** 2))
         phi2 = lambda t: self.gamma * (1 + self.gamma * (t ** 2))
         Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p()
-        self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.discre))
+        self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.time_discretization))
 
         iqp = IonQProvider(self.api_key)
         self.prvd = iqp
@@ -422,7 +419,7 @@ class QHD:
         phi1 = lambda t: self.gamma / (1 + self.gamma * (t ** 2))
         phi2 = lambda t: self.gamma * (1 + self.gamma * (t ** 2))
         Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p()
-        self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.discre))
+        self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.time_discretization))
 
         qpp = QuTiPProvider()
         self.prvd = qpp
