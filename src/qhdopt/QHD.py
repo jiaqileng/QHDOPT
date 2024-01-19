@@ -4,15 +4,11 @@ import time
 import cyipopt
 import jax.numpy as jnp
 import numpy as np
-import qutip as qtp
 from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
     gen_new_func_with_affine_trans, generate_bounds
+from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
-from simuq import QSystem, Qubit, hlist_sum
-from simuq.dwave.dwave_provider import DWaveProvider
-from simuq.ionq import IonQAPICircuit, IonQProvider
-from simuq.qutip import QuTiPProvider
 from sympy import lambdify, symbols
 
 
@@ -82,20 +78,22 @@ class QHD:
             penalty_ratio=0.75,
             post_processing_method="TNC",
     ):
-        if anneal_schedule is None:
-            anneal_schedule = [[0, 0], [20, 1]]
-        self.backend = "dwave"
-        self.r, self.resolution = resolution, resolution
+        self.generate_univariate_bivariate_repr()
+        self.backend = dwave_backend.DwaveBackend(
+            resolution=resolution,
+            dimension=self.dimension,
+            univariate_dict=self.univariate_dict,
+            bivariate_dict=self.bivariate_dict,
+            shots=shots,
+            api_key=api_key,
+            api_key_from_file=api_key_from_file,
+            embedding_scheme=embedding_scheme,
+            anneal_schedule=anneal_schedule,
+            penalty_coefficient=penalty_coefficient,
+            chain_strength=chain_strength,
+            penalty_ratio=penalty_ratio,
+        )
         self.shots = shots
-        self.api_key = api_key
-        if api_key_from_file != None:
-            with open(api_key_from_file, "r") as f:
-                self.api_key = f.readline().strip()
-        self.embedding_scheme = embedding_scheme
-        self.anneal_schedule = anneal_schedule
-        self.penalty_coefficient = penalty_coefficient
-        self.chain_strength = chain_strength
-        self.penalty_ratio = penalty_ratio
         self.post_processing_method = post_processing_method
 
     def ionq_setup(
@@ -110,17 +108,21 @@ class QHD:
             gamma=5,
             post_processing_method="TNC",
     ):
-        self.backend = "ionq"
-        self.r, self.resolution = resolution, resolution
+        self.generate_univariate_bivariate_repr()
+        self.backend = ionq_backend.IonqBackend(
+            resolution=resolution,
+            dimension=self.dimension,
+            univariate_dict=self.univariate_dict,
+            bivariate_dict=self.bivariate_dict,
+            shots=shots,
+            api_key=api_key,
+            api_key_from_file=api_key_from_file,
+            embedding_scheme=embedding_scheme,
+            penalty_coefficient=penalty_coefficient,
+            time_discretization=time_discretization,
+            gamma=gamma,
+        )
         self.shots = shots
-        self.api_key = api_key
-        if api_key_from_file != None:
-            with open(api_key_from_file, "r") as f:
-                self.api_key = f.readline().strip()
-        self.embedding_scheme = embedding_scheme
-        self.penalty_coefficient = penalty_coefficient
-        self.discre, self.time_discretization = time_discretization, time_discretization
-        self.gamma = gamma
         self.post_processing_method = post_processing_method
 
     def qutip_setup(
@@ -133,13 +135,19 @@ class QHD:
             gamma=5,
             post_processing_method="TNC",
     ):
-        self.backend = "qutip"
-        self.r, self.resolution = resolution, resolution
+        self.generate_univariate_bivariate_repr()
+        self.backend = qutip_backend.QutipBackend(
+            resolution=resolution,
+            dimension=self.dimension,
+            univariate_dict=self.univariate_dict,
+            bivariate_dict=self.bivariate_dict,
+            shots=shots,
+            embedding_scheme=embedding_scheme,
+            penalty_coefficient=penalty_coefficient,
+            time_discretization=time_discretization,
+            gamma=gamma,
+        )
         self.shots = shots
-        self.embedding_scheme = embedding_scheme
-        self.penalty_coefficient = penalty_coefficient
-        self.time_discretization = time_discretization
-        self.gamma = gamma
         self.post_processing_method = post_processing_method
 
     def affine_transformation(self, x):
@@ -149,306 +157,9 @@ class QHD:
         x = x.astype(jnp.float32)
         return self.lambda_numpy(*x)
 
-    def unary_penalty(self, k, qubits):
-        unary_penalty_sum = lambda k: sum(
-            [
-                qubits[j].Z * qubits[j + 1].Z
-                for j in range(k * self.r, (k + 1) * self.r - 1)
-            ]
-        )
-        return (
-                (-1) * qubits[k * self.r].Z
-                + qubits[(k + 1) * self.r - 1].Z
-                - unary_penalty_sum(k)
-        )
-
-    def H_pen(self, qubits=None):
-        if qubits is None:
-            qubits = self.qubits
-        if self.embedding_scheme == "hamming":
-            return 0
-        elif self.embedding_scheme == "unary":
-            return hlist_sum(
-                [self.unary_penalty(p, qubits) for p in range(self.dimension)]
-            )
-
-    def S_x(self, qubits=None):
-        if qubits is None:
-            qubits = self.qubits
-        return hlist_sum([qubit.X for qubit in qubits])
-
-    def H_k(self, qubits=None):
-        if qubits is None:
-            qubits = self.qubits
-        if self.embedding_scheme == "onehot":
-
-            def onehot_driving_sum(k):
-                return sum(
-                    [
-                        0.5
-                        * (
-                                qubits[j].X * qubits[j + 1].X
-                                + qubits[j].Y * qubits[j + 1].Y
-                        )
-                        for j in range(k * self.r, (k + 1) * self.r - 1)
-                    ]
-                )
-
-            return (-0.5 * self.r ** 2) * hlist_sum(
-                [onehot_driving_sum(p) for p in range(self.dimension)]
-            )
-        else:
-            return (-0.5 * self.r ** 2) * hlist_sum([qubit.X for qubit in qubits])
-
-    def H_p(self, qubits=None):
-
-        # Encoding of the X operator as defined in (F.16) in https://browse.arxiv.org/pdf/2303.01471.pdf
-        def Enc_X(k):
-            S_z = lambda k: sum(
-                [qubits[j].Z for j in range(k * self.r, (k + 1) * self.r)]
-            )
-            return (1 / 2) + (-1 / (2 * self.r)) * S_z(k)
-
-        def get_ham(d, lmda):
-            def n_j(d, j):
-                return 0.5 * (
-                        qubits[(d - 1) * self.r + j].I - qubits[(d - 1) * self.r + j].Z
-                )
-
-            if self.embedding_scheme == "unary":
-
-                def eval_lmda_unary():
-                    eval_points = [i / self.r for i in range(self.r + 1)]
-                    return [lmda(x) for x in eval_points]
-
-                eval_lmda = eval_lmda_unary()
-                H = eval_lmda[0] * self.qubits[(d - 1) * self.r].I
-                for i in range(len(eval_lmda) - 1):
-                    H += (eval_lmda[i + 1] - eval_lmda[i]) * n_j(d, self.r - i - 1)
-
-                return H
-
-            elif self.embedding_scheme == "onehot":
-
-                def eval_lmda_onehot():
-                    eval_points = [i / self.r for i in range(1, self.r + 1)]
-                    return [lmda(x) for x in eval_points]
-
-                eval_lmda = eval_lmda_onehot()
-                H = 0
-                for i in range(len(eval_lmda)):
-                    H += eval_lmda[i] * n_j(d, self.r - i - 1)
-
-                return H
-
-        H = 0
-        for key, value in self.univariate_dict.items():
-            coefficient, lmda = value
-            if self.embedding_scheme == "hamming":
-                H += lmda(Enc_X(key - 1))
-            else:
-                ham = get_ham(key, lmda)
-                H += coefficient * ham
-
-        for key, value in self.bivariate_dict.items():
-            d1, d2 = key
-            for term in value:
-                coefficient, lmda1, lmda2 = term
-                if self.embedding_scheme == "hamming":
-                    H += coefficient * lmda1(Enc_X(d1 - 1)) * lmda2(Enc_X(d2 - 1))
-                else:
-                    H += coefficient * (get_ham(d1, lmda1) * get_ham(d2, lmda2))
-
-        return H
-
-    def calc_penalty_coefficient_and_chain_strength(self):
-        qs = QSystem()
-        qubits = [Qubit(qs) for _ in range(self.dimension * self.r)]
-        qs.add_evolution(self.S_x(qubits) + self.H_p(qubits), 1)
-        dwp = DWaveProvider(self.api_key)
-        h, J = dwp.compile(qs, self.anneal_schedule)
-        max_strength = np.max(np.abs(list(h) + list(J.values())))
-        penalty_coefficient = (
-            self.penalty_ratio * max_strength if self.embedding_scheme == "unary" else 0
-        )
-        chain_strength = np.max([5e-2, 0.5 * self.penalty_ratio])
-        return penalty_coefficient, chain_strength
-
-    def dwave_exec(self, verbose=0):
-        (
-            penalty_coefficient,
-            chain_strength,
-        ) = self.calc_penalty_coefficient_and_chain_strength()
-        self.qs.add_evolution(
-            self.S_x() + self.H_p() + penalty_coefficient * self.H_pen(), 1
-        )
-
-        dwp = DWaveProvider(self.api_key)
-        self.prvd = dwp
-
-        self.info["time_start_compile"] = time.time()
-        dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
-        self.info["time_end_compile"] = time.time()
-        if verbose > 1:
-            print("Submit Task to D-Wave:")
-            print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
-
-        dwp.run(shots=self.shots)
-        self.info["time_end_backend"] = time.time()
-        self.info["average_qpu_time"] = dwp.avg_qpu_time
-        self.info["time_on_machine"] = dwp.time_on_machine
-        self.info["overhead_time"] = self.info["time_end_backend"] - self.info["time_end_compile"] - \
-                                     self.info["time_on_machine"]
-        if verbose >= 1:
-            print("Received Task from D-Wave:")
-            print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
-            print(f"Backend QPU Time: {self.info['time_on_machine']}")
-            print(f"Overhead Time: {self.info['overhead_time']}")
-
-        self.raw_result = dwp.results()
-        raw_samples = []
-        for i in range(self.shots):
-            raw_samples.append(QHD.spin_to_bitstring(self.raw_result[i]))
-
-        return raw_samples
-
-    def ionq_state_prep_one_hot(self, circ, amplitudes):
-        def state_prep_one_hot_aux(n, starting_index, amplitudes):
-            assert np.all(np.isreal(amplitudes)) and np.all(amplitudes >= 0)
-            assert len(amplitudes) == n
-
-            if n > 1:
-                amplitudes_left = amplitudes[: int(n / 2)]
-                amplitudes_right = amplitudes[int(n / 2):]
-                a = np.linalg.norm(amplitudes_left)
-
-                if np.linalg.norm(amplitudes_right) > 0:
-                    circ.rPP(
-                        "X",
-                        "Y",
-                        starting_index,
-                        starting_index + int(n / 2),
-                        np.arccos(a),
-                    )
-                    circ.rPP(
-                        "X",
-                        "Y",
-                        starting_index + int(n / 2),
-                        starting_index,
-                        -np.arccos(a),
-                    )
-
-                if np.linalg.norm(amplitudes_left) > 0:
-                    state_prep_one_hot_aux(
-                        int(n / 2),
-                        starting_index,
-                        amplitudes_left / np.linalg.norm(amplitudes_left),
-                    )
-                if np.linalg.norm(amplitudes_right) > 0:
-                    state_prep_one_hot_aux(
-                        int((n + 1) / 2),
-                        starting_index + int(n / 2),
-                        amplitudes_right / np.linalg.norm(amplitudes_right),
-                    )
-
-        n = self.r
-        amplitudes = np.array(amplitudes)
-        for i in range(self.dimension):
-            amplitudes_abs_val = np.abs(amplitudes)
-
-            # Start from 000...001 (first qubit on the right)
-            circ.rx(i * n, np.pi)
-
-            state_prep_one_hot_aux(n, i * n, amplitudes_abs_val)
-
-            if not np.all(amplitudes >= 0):
-                for k in range(self.r):
-                    theta = np.angle(amplitudes[k])
-                    circ.rz(i * n + k, theta)
-
     @staticmethod
     def binstr_to_bitstr(s):
         return list(map(int, list(s)))
-
-    def ionq_exec(self, on_simulator=True, with_noise=False, verbose=0):
-        if self.embedding_scheme != "onehot":
-            raise Exception("IonQ backend must use one-hot embedding.")
-
-        self.qs.add_evolution(10 * self.H_k(), 1)
-        phi1 = lambda t: self.gamma / (1 + self.gamma * (t ** 2))
-        phi2 = lambda t: self.gamma * (1 + self.gamma * (t ** 2))
-        Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p()
-        self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.time_discretization))
-
-        iqp = IonQProvider(self.api_key)
-        self.prvd = iqp
-
-        num_sites = self.qs.num_sites
-        state_prep = IonQAPICircuit(num_sites)
-        self.ionq_state_prep_one_hot(
-            state_prep, np.array([1] * self.r) / np.sqrt(self.r)
-        )
-
-        self.info["time_start_compile"] = time.time()
-        iqp.compile(
-            self.qs,
-            backend="aria-1",
-            trotter_num=1,
-            state_prep=state_prep,
-            verbose=-1,
-            tol=0.1,
-        )
-        self.info["time_end_compile"] = time.time()
-
-        iqp.run(shots=self.shots, on_simulator=on_simulator, with_noise=with_noise)
-        self.raw_result = iqp.results(wait=1)
-        raw_samples = []
-        for k in self.raw_result:
-            occ = int(self.raw_result[k] * self.shots)
-            raw_samples += [k] * occ
-        raw_samples = list(map(self.binstr_to_bitstr, raw_samples))
-        self.info["time_end_backend"] = time.time()
-
-        return raw_samples
-
-    def qutip_exec(self, nsteps=10000, verbose=0):
-        if self.embedding_scheme != "onehot":
-            raise Exception("QuTiP simulation must use one-hot embedding.")
-
-        self.qs.add_evolution(10 * self.H_k(), 1)
-        phi1 = lambda t: self.gamma / (1 + self.gamma * (t ** 2))
-        phi2 = lambda t: self.gamma * (1 + self.gamma * (t ** 2))
-        Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p()
-        self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.time_discretization))
-
-        qpp = QuTiPProvider()
-        self.prvd = qpp
-
-        g = qtp.Qobj([[1], [0]])
-        e = qtp.Qobj([[0], [1]])
-        initial_state_per_dim = qtp.tensor([e] + [g] * (self.r - 1))
-        for j in range(self.r - 1):
-            initial_state_per_dim += qtp.tensor(
-                [g] * (j + 1) + [e] + [g] * (self.r - 2 - j)
-            )
-        initial_state_per_dim = initial_state_per_dim / np.sqrt(self.r)
-
-        initial_state = qtp.tensor([initial_state_per_dim] * self.dimension)
-
-        self.info["time_start_compile"] = time.time()
-
-        qpp.compile(self.qs, initial_state=initial_state)
-        self.info["time_end_compile"] = time.time()
-
-        qpp.run(nsteps=nsteps)
-        self.raw_result = qpp.results()
-        raw_samples = random.choices(
-            list(self.raw_result.keys()), weights=self.raw_result.values(), k=self.shots
-        )
-        raw_samples = list(map(self.binstr_to_bitstr, raw_samples))
-        self.info["time_end_backend"] = time.time()
-
-        return raw_samples
 
     @staticmethod
     def spin_to_bitstring(spin_list):
@@ -464,75 +175,6 @@ class QHD:
 
         return bitstring
 
-    @staticmethod
-    def hamming_bitstring_to_vec(bitstring, d, r):
-        sample = np.zeros(d)
-        for i in range(d):
-            sample[i] = sum(bitstring[i * r: (i + 1) * r]) / r
-        return sample
-
-    @staticmethod
-    def unary_bitstring_to_vec(bitstring, d, r):
-        sample = np.zeros(d)
-
-        for i in range(d):
-            x_i = bitstring[i * r: (i + 1) * r]
-
-            in_low_energy_subspace = True
-            for j in range(r - 1):
-                if x_i[j] > x_i[j + 1]:
-                    in_low_energy_subspace = False
-
-            if in_low_energy_subspace:
-                sample[i] = np.mean(x_i)
-            else:
-                return None
-
-        return sample
-
-    @staticmethod
-    def onehot_bitstring_to_vec(bitstring, d, r):
-        sample = np.zeros(d)
-
-        for i in range(d):
-            x_i = bitstring[i * r: (i + 1) * r]
-            if sum(x_i) != 1:
-                return None
-            else:
-                slot = 0
-                while slot < r and x_i[slot] == 0:
-                    slot += 1
-                sample[i] = 1 - slot / r
-
-        return sample
-
-    def bitstring_to_vec(self, bitstring, d, r):
-        if self.embedding_scheme == "unary":
-            return QHD.unary_bitstring_to_vec(bitstring, d, r)
-        elif self.embedding_scheme == "onehot":
-            return QHD.onehot_bitstring_to_vec(bitstring, d, r)
-        elif self.embedding_scheme == "hamming":
-            return QHD.hamming_bitstring_to_vec(bitstring, d, r)
-        else:
-            raise Exception("Illegal embedding scheme.")
-
-    def decoder(self, raw_samples):
-        qhd_samples = []
-        minimizer = np.zeros(self.dimension)
-        minimum = float("inf")
-
-        for i in range(len(raw_samples)):
-            bitstring = raw_samples[i]
-            qhd_samples.append(self.bitstring_to_vec(bitstring, self.dimension, self.r))
-            if qhd_samples[i] is None:
-                continue
-            if self.f_eval(qhd_samples[i]) < minimum:
-                minimum = self.f_eval(qhd_samples[i])
-                minimizer = qhd_samples[i]
-
-        self.qhd_samples = qhd_samples
-
-        return minimizer, minimum
 
     def post_process(self):
         if self.qhd_samples is None:
@@ -597,21 +239,11 @@ class QHD:
         return succ_cnt / len(self.post_processed_samples)
 
     def optimize(self, fine_tune=True, verbose=0):
-        self.qs = QSystem()
-        self.qubits = [Qubit(self.qs) for _ in range(self.dimension * self.r)]
-        self.generate_univariate_bivariate_repr()
-        if self.backend == "dwave":
-            raw_samples = self.dwave_exec(verbose=verbose)
-        elif self.backend == "ionq":
-            raw_samples = self.ionq_exec(verbose=verbose, with_noise=True)
-        elif self.backend == "qutip":
-            raw_samples = self.qutip_exec(verbose=verbose)
-        else:
-            raise Exception("Unsupported Backend.")
+        raw_samples = self.backend.exec(verbose=1, info=self.info)
 
         self.raw_samples = raw_samples
 
-        coarse_minimizer, coarse_minimum = self.decoder(raw_samples)
+        coarse_minimizer, coarse_minimum, self.qhd_samples = self.backend.decoder(raw_samples, self.f_eval)
         self.info["coarse_minimizer"], self.info["coarse_minimum"] = (
             coarse_minimizer,
             coarse_minimum,

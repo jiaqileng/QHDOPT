@@ -1,14 +1,17 @@
 from abc import ABC, abstractmethod
 
-from simuq import QSystem, hlist_sum
+from simuq import QSystem, hlist_sum, Qubit
+import numpy as np
+
+from qhdopt.utils.decoding_utils import bitstring_to_vec
 
 
 class Backend(ABC):
-    def __init__(self, resolution, shots, embedding_scheme, qs, qubits, univariate_dict, bivariate_dict):
-        self.qs = qs
-        self.qubits = qubits
+    def __init__(self, resolution, dimension, shots, embedding_scheme, univariate_dict, bivariate_dict):
         self.resolution = resolution
-        self.dimension = len(qubits) / self.resolution  # dimension * resolution = len(qubits)
+        self.dimension = dimension
+        self.qs = QSystem()
+        self.qubits = [Qubit(self.qs) for _ in range(self.dimension * self.resolution)]
         self.shots = shots
         self.embedding_scheme = embedding_scheme
         self.univariate_dict = univariate_dict
@@ -99,6 +102,24 @@ class Backend(ABC):
                     H += coefficient * (get_ham(d1, lmda1) * get_ham(d2, lmda2))
 
         return H
+
+    def decoder(self, raw_samples, f_eval):
+        qhd_samples = []
+        minimizer = np.zeros(self.dimension)
+        minimum = float("inf")
+
+        for i in range(len(raw_samples)):
+            bitstring = raw_samples[i]
+            qhd_samples.append(bitstring_to_vec(self.embedding_scheme, bitstring, self.dimension, self.resolution))
+            if qhd_samples[i] is None:
+                continue
+            if f_eval(qhd_samples[i]) < minimum:
+                minimum = f_eval(qhd_samples[i])
+                minimizer = qhd_samples[i]
+
+        self.qhd_samples = qhd_samples
+
+        return minimizer, minimum, qhd_samples
 
     def H_k(self, qubits=None):
         if qubits is None:

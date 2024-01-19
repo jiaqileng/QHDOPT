@@ -13,8 +13,7 @@ from qhdopt.utils.decoding_utils import binstr_to_bitstr
 class QutipBackend(Backend):
     def __init__(self,
                  resolution,
-                 qs,
-                 qubits,
+                 dimension,
                  univariate_dict,
                  bivariate_dict,
                  shots=100,
@@ -23,7 +22,7 @@ class QutipBackend(Backend):
                  time_discretization=10,
                  nsteps=10000,
                  gamma=5, ):
-        super().__init__(resolution, shots, embedding_scheme, qs, qubits, univariate_dict,
+        super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
                          bivariate_dict)
         self.penalty_coefficient = penalty_coefficient
         self.time_discretization = time_discretization

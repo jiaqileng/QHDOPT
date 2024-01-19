@@ -10,7 +10,7 @@ def get_function_from_qp_file(dimension):
     return QHD.quad_to_gen(Q, b)
 
 
-def TTS(t_f, p_s, success_prob):
+def TTS(t_f, p_s, success_prob=0.99):
     p_s = min(p_s, success_prob)
     return t_f * (np.log(1 - success_prob) / (np.log(1 - p_s)))
 

@@ -12,6 +12,7 @@ from qhdopt.utils.decoding_utils import binstr_to_bitstr
 class IonqBackend(Backend):
     def __init__(self,
                  resolution,
+                 dimension,
                  qs,
                  qubits,
                  univariate_dict,
@@ -26,7 +27,7 @@ class IonqBackend(Backend):
                  on_simulator=False,
                  with_noise=False,
                  ):
-        super().__init__(resolution, shots, embedding_scheme, qs, qubits, univariate_dict,
+        super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
                          bivariate_dict)
         self.api_key = api_key
         if api_key_from_file is not None:

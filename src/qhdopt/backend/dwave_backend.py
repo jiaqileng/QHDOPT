@@ -10,8 +10,7 @@ from qhdopt.backend.backend import Backend
 class DwaveBackend(Backend):
     def __init__(self,
                  resolution,
-                 qs,
-                 qubits,
+                 dimension,
                  univariate_dict,
                  bivariate_dict,
                  shots=100,
@@ -22,7 +21,8 @@ class DwaveBackend(Backend):
                  penalty_coefficient=0,
                  chain_strength=None,
                  penalty_ratio=0.75, ):
-        super().__init__(resolution, shots, embedding_scheme, qs, qubits, univariate_dict, bivariate_dict)
+        super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
+                         bivariate_dict)
         if anneal_schedule is None:
             anneal_schedule = [[0, 0], [20, 1]]
         self.api_key = api_key
