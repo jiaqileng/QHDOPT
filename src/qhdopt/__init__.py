@@ -1,1 +1,2 @@
-from qhdopt.interface import QHD
+from qhdopt.qhd import QHD
+
