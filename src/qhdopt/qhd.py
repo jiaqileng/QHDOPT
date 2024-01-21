@@ -5,7 +5,8 @@ import cyipopt
 import jax.numpy as jnp
 import numpy as np
 from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
-    gen_new_func_with_affine_trans, generate_bounds
+    gen_new_func_with_affine_trans, generate_bounds, quad_to_gen
+from qhdopt.utils.benchmark_utils import calc_success_prob
 from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
@@ -45,25 +46,8 @@ class QHD:
 
     @classmethod
     def QP(cls, Q, b, bounds=None):
-        f, xl = QHD.quad_to_gen(Q, b)
+        f, xl = quad_to_gen(Q, b)
         return cls(f, xl, bounds)
-
-    @staticmethod
-    def quad_to_gen(Q, b):
-        x = symbols(f"x:{len(Q)}")
-        f = 0
-        for i in range(len(Q)):
-            qii = Q[i][i]
-            bi = b[i]
-            f += 0.5 * qii * x[i] * x[i] + bi * x[i]
-        for i in range(len(Q)):
-            for j in range(i + 1, len(Q)):
-                if Q[i][j] != Q[j][i]:
-                    raise Exception(
-                        "Q matrix is not symmetric."
-                    )
-                f += Q[i][j] * x[i] * x[j]
-        return f, list(x)
 
     def dwave_setup(
             self,
@@ -175,26 +159,25 @@ class QHD:
 
         return bitstring
 
-
-    def post_process(self):
-        if self.qhd_samples is None:
-            raise Exception("No results on record.")
-
-        num_samples = len(self.qhd_samples)
-        post_qhd_samples = []
-        minimizer = np.zeros(self.dimension)
-        bounds = Bounds(np.zeros(self.dimension), np.ones(self.dimension))
+    @staticmethod
+    def classicly_optimize(f, samples, dimension, solver="TNC", affine_transformation=None):
+        if affine_transformation is None:
+            affine_transformation = gen_affine_transformation(1, 0)
+        num_samples = len(samples)
+        opt_samples = []
+        minimizer = np.zeros(dimension)
+        bounds = Bounds(np.zeros(dimension), np.ones(dimension))
         current_best = float("inf")
-        f_eval_jit = jit(self.f_eval)
+        f_eval_jit = jit(f)
         f_eval_grad = jit(grad(f_eval_jit))
         obj_hess = jit(jacrev(jacfwd(f_eval_jit)))
         start_time = time.time()
         for k in range(num_samples):
-            if self.qhd_samples[k] is None:
-                post_qhd_samples.append(None)
+            if samples[k] is None:
+                opt_samples.append(None)
                 continue
-            x0 = jnp.array(self.qhd_samples[k])
-            if self.post_processing_method == "TNC":
+            x0 = jnp.array(samples[k])
+            if solver == "TNC":
                 result = minimize(
                     f_eval_jit,
                     x0,
@@ -203,7 +186,7 @@ class QHD:
                     bounds=bounds,
                     options={"gtol": 1e-6, "eps": 1e-9},
                 )
-            elif self.post_processing_method == "IPOPT":
+            elif solver == "IPOPT":
                 result = cyipopt.minimize_ipopt(
                     f_eval_jit,
                     x0,
@@ -216,34 +199,33 @@ class QHD:
                 raise Exception(
                     "The Specified Post Processing Method is Not Supported."
                 )
-            post_qhd_samples.append(self.affine_transformation(result.x))
-            if self.f_eval(result.x) < current_best:
-                current_best = self.f_eval(post_qhd_samples[k])
-                minimizer = post_qhd_samples[k]
+            opt_samples.append(affine_transformation(result.x))
+            if f(result.x) < current_best:
+                current_best = f(opt_samples[k])
+                minimizer = opt_samples[k]
         end_time = time.time()
-        self.post_processed_samples = post_qhd_samples
-        self.info["post_processing_time"] = end_time - start_time
 
-        return minimizer, current_best, end_time - start_time
+        return opt_samples, minimizer, current_best, end_time - start_time
 
-    def calc_success_rate(self):
-        succ_cnt = 0
-        tol_rate = 0.05
-        thres = self.info["refined_minimum"] + tol_rate * (
-                1e-5 + abs(self.info["refined_minimum"])
-        )
-        for x in self.post_processed_samples:
-            if x is not None:
-                if self.f_eval(x) < thres:
-                    succ_cnt += 1
-        return succ_cnt / len(self.post_processed_samples)
+    def post_process(self):
+        if self.qhd_samples is None:
+            raise Exception("No results on record.")
+
+        opt_samples, minimizer, current_best, post_processing_time = QHD.classicly_optimize(
+            self.f_eval, self.qhd_samples, self.dimension, self.post_processing_method,
+            self.affine_transformation)
+        self.post_processed_samples = opt_samples
+        self.info["post_processing_time"] = post_processing_time
+
+        return minimizer, current_best, post_processing_time
 
     def optimize(self, fine_tune=True, verbose=0):
         raw_samples = self.backend.exec(verbose=1, info=self.info)
 
         self.raw_samples = raw_samples
 
-        coarse_minimizer, coarse_minimum, self.qhd_samples = self.backend.decoder(raw_samples, self.f_eval)
+        coarse_minimizer, coarse_minimum, self.qhd_samples = self.backend.decoder(raw_samples,
+                                                                                  self.f_eval)
         self.info["coarse_minimizer"], self.info["coarse_minimum"] = (
             coarse_minimizer,
             coarse_minimum,
@@ -279,7 +261,9 @@ class QHD:
             print("* Fine-tuned solution")
             print("Minimizer:", self.info["refined_minimizer"])
             print("Minimum:", self.info["refined_minimum"])
-            print("Success rate:", self.calc_success_rate())
+            print("Success rate:",
+                  calc_success_prob(self.info["refined_minimum"], self.post_processed_samples,
+                                    self.shots, self.f_eval))
             print()
 
     def print_time_info(self):

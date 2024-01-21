@@ -1,5 +1,5 @@
 import numpy as np
-from sympy import lambdify, expand, N
+from sympy import lambdify, expand, N, symbols
 
 
 def gen_affine_transformation(scaling_factor, lb):
@@ -68,6 +68,22 @@ def decompose_function(func, syms):
     }
 
     return univariate_part, bivariate_terms
+
+def quad_to_gen(Q, b):
+    x = symbols(f"x:{len(Q)}")
+    f = 0
+    for i in range(len(Q)):
+        qii = Q[i][i]
+        bi = b[i]
+        f += 0.5 * qii * x[i] * x[i] + bi * x[i]
+    for i in range(len(Q)):
+        for j in range(i + 1, len(Q)):
+            if Q[i][j] != Q[j][i]:
+                raise Exception(
+                    "Q matrix is not symmetric."
+                )
+            f += Q[i][j] * x[i] * x[j]
+    return f, list(x)
 
 
 def generate_bounds(bounds, dimension):

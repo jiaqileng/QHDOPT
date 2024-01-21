@@ -1,2 +1,2 @@
-from qhdopt.QHD import QHD
+from qhdopt.qhd import QHD
 
