@@ -87,7 +87,7 @@ class Backend(ABC):
         for key, value in univariate_dict.items():
             coefficient, lmda = value
             if self.embedding_scheme == "hamming":
-                H += lmda(Enc_X(key - 1))
+                H += coefficient*lmda(Enc_X(key - 1))
             else:
                 ham = get_ham(key, lmda)
                 H += coefficient * ham
