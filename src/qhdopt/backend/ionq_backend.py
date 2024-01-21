@@ -13,8 +13,6 @@ class IonqBackend(Backend):
     def __init__(self,
                  resolution,
                  dimension,
-                 qs,
-                 qubits,
                  univariate_dict,
                  bivariate_dict,
                  shots=100,
