@@ -15,10 +15,11 @@ setup(
     packages=find_namespace_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[
-        "jax",
+        "jax[cpu]",
         "sympy",
-        "scipy",
+        "scipy==1.10.1",
         "numpy",
+        "jaxlib"
     ],
     extras_require={
         "dev": ["tox"],
