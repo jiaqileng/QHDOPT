@@ -36,8 +36,7 @@ class QHD:
 
     def generate_univariate_bivariate_repr(self):
         self.lb, self.scaling_factor = generate_bounds(self.bounds, self.dimension)
-        affine_transformation = gen_affine_transformation(self.scaling_factor, self.lb)
-        func, syms = gen_new_func_with_affine_trans(affine_transformation, self.func, self.syms)
+        func, syms = gen_new_func_with_affine_trans(self.affine_transformation, self.func, self.syms)
         self.univariate_dict, self.bivariate_dict = decompose_function(func, syms)
 
     @classmethod
@@ -91,6 +90,7 @@ class QHD:
             time_discretization=10,
             gamma=5,
             post_processing_method="TNC",
+            on_simulator=False,
     ):
         self.generate_univariate_bivariate_repr()
         self.backend = ionq_backend.IonqBackend(
@@ -104,6 +104,7 @@ class QHD:
             embedding_scheme=embedding_scheme,
             penalty_coefficient=penalty_coefficient,
             time_discretization=time_discretization,
+            on_simulator=on_simulator,
             gamma=gamma,
         )
         self.shots = shots
@@ -138,7 +139,7 @@ class QHD:
         return self.scaling_factor * x + self.lb
 
     def f_eval(self, x):
-        x = x.astype(jnp.float32)
+        x = self.affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
     @staticmethod
