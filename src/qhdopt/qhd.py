@@ -91,6 +91,7 @@ class QHD:
             time_discretization=10,
             gamma=5,
             post_processing_method="TNC",
+            on_simulator=False,
     ):
         self.generate_univariate_bivariate_repr()
         self.backend = ionq_backend.IonqBackend(
@@ -104,6 +105,7 @@ class QHD:
             embedding_scheme=embedding_scheme,
             penalty_coefficient=penalty_coefficient,
             time_discretization=time_discretization,
+            on_simulator=on_simulator,
             gamma=gamma,
         )
         self.shots = shots
