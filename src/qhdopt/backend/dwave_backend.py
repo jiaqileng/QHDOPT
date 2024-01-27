@@ -77,6 +77,7 @@ class DwaveBackend(Backend):
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
             print(f"Backend QPU Time: {info['time_on_machine']}")
             print(f"Overhead Time: {info['overhead_time']}")
+            print()
 
         self.raw_result = dwp.results()
         raw_samples = []
