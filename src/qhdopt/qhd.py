@@ -141,9 +141,12 @@ class QHD:
 
     def affine_transformation(self, x):
         return self.scaling_factor * x + self.lb
+    
+    def jax_affine_transformation(self, x):
+        return jnp.array(self.scaling_factor) * x + jnp.array(self.lb)
 
     def f_eval(self, x):
-        x = self.affine_transformation(x.astype(jnp.float32))
+        x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
     @staticmethod
@@ -165,9 +168,7 @@ class QHD:
         return bitstring
 
     @staticmethod
-    def classically_optimize(f, samples, dimension, solver="TNC", affine_transformation=None):
-        if affine_transformation is None:
-            affine_transformation = gen_affine_transformation(1, 0)
+    def classically_optimize(f, samples, dimension, solver="TNC"):
         num_samples = len(samples)
         opt_samples = []
         minimizer = np.zeros(dimension)
@@ -218,15 +219,14 @@ class QHD:
             raise Exception("No results on record.")
 
         opt_samples, minimizer, current_best, post_processing_time = QHD.classically_optimize(
-            self.f_eval, self.qhd_samples, self.dimension, self.post_processing_method,
-            self.affine_transformation)
+            self.f_eval, self.qhd_samples, self.dimension, self.post_processing_method)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
 
         return minimizer, current_best, post_processing_time
 
-    def optimize(self, shots = None, fine_tune=True, verbose=0):
-        raw_samples = self.backend.exec(verbose=1, shots = shots, info=self.info)
+    def optimize(self, fine_tune=True, verbose=0):
+        raw_samples = self.backend.exec(verbose=1, info=self.info)
 
         self.raw_samples = raw_samples
 
