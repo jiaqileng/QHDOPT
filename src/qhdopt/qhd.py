@@ -40,8 +40,7 @@ class QHD:
 
     def generate_univariate_bivariate_repr(self):
         self.lb, self.scaling_factor = generate_bounds(self.bounds, self.dimension)
-        affine_transformation = gen_affine_transformation(self.scaling_factor, self.lb)
-        func, syms = gen_new_func_with_affine_trans(affine_transformation, self.func, self.syms)
+        func, syms = gen_new_func_with_affine_trans(self.affine_transformation, self.func, self.syms)
         self.univariate_dict, self.bivariate_dict = decompose_function(func, syms)
 
     @classmethod
@@ -144,7 +143,7 @@ class QHD:
         return self.scaling_factor * x + self.lb
 
     def f_eval(self, x):
-        x = x.astype(jnp.float32)
+        x = self.affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
     @staticmethod
