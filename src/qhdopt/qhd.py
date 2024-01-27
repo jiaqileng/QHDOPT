@@ -252,6 +252,12 @@ class QHD:
 
         return minimum
 
+    def calc_h_and_J(self):
+        if not isinstance(self.backend, dwave_backend.DwaveBackend):
+            raise Exception(
+                "This function is only used for Dwave backends."
+            )
+        return self.backend.calc_h_and_J()
     def print_sol_info(self):
         print("* Coarse solution")
         print("Minimizer:", self.info["coarse_minimizer"])

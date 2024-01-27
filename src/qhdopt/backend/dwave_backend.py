@@ -35,6 +35,8 @@ class DwaveBackend(Backend):
         self.penalty_ratio = penalty_ratio
 
     def calc_penalty_coefficient_and_chain_strength(self):
+        if self.penalty_coefficient != 0 and self.chain_strength is not None:
+            return self.penalty_coefficient, self.chain_strength
         qs = QSystem()
         qubits = [Qubit(qs) for _ in range(len(self.qubits))]
         qs.add_evolution(self.S_x(qubits) + self.H_p(qubits, self.univariate_dict, self.bivariate_dict), 1)
@@ -84,3 +86,16 @@ class DwaveBackend(Backend):
             raw_samples.append(spin_to_bitstring(self.raw_result[i]))
 
         return raw_samples
+
+    def calc_h_and_J(self):
+        (
+            penalty_coefficient,
+            chain_strength,
+        ) = self.calc_penalty_coefficient_and_chain_strength()
+        self.qs.add_evolution(
+            self.S_x(self.qubits) + self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
+        )
+
+        dwp = DWaveProvider(self.api_key)
+        return dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
+

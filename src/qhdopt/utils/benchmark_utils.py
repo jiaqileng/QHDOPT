@@ -4,7 +4,7 @@ from qhdopt.utils.function_preprocessing_utils import quad_to_gen
 
 
 def get_function_from_qp_file(dimension):
-    with open(f"{dimension}d_instance.npy", 'rb') as f:
+    with open(f"resources/{dimension}d_instance.npy", 'rb') as f:
         Q = np.load(f)
         b = np.load(f)
     return quad_to_gen(Q, b)

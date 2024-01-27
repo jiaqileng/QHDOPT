@@ -78,7 +78,7 @@ def quad_to_gen(Q, b):
         f += 0.5 * qii * x[i] * x[i] + bi * x[i]
     for i in range(len(Q)):
         for j in range(i + 1, len(Q)):
-            if Q[i][j] != Q[j][i]:
+            if abs(Q[i][j] - Q[j][i]) > 1e-6:
                 raise Exception(
                     "Q matrix is not symmetric."
                 )
