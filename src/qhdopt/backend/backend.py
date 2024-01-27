@@ -12,6 +12,8 @@ class Backend(ABC):
         self.dimension = dimension
         self.qs = QSystem()
         self.qubits = [Qubit(self.qs) for _ in range(self.dimension * self.resolution)]
+        if shots == None :
+            shots = 100
         self.shots = shots
         self.embedding_scheme = embedding_scheme
         self.univariate_dict = univariate_dict

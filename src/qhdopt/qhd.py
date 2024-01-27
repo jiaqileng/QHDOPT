@@ -1,5 +1,6 @@
 import random
 import time
+import warnings
 
 import cyipopt
 import jax.numpy as jnp
@@ -32,7 +33,10 @@ class QHD:
         self.func = func
         self.bounds = bounds
         self.lambda_numpy = lambdify(syms, func, jnp)
-        self.dimension = len(func.free_symbols)
+        #self.dimension = len(func.free_symbols)
+        self.dimension = len(syms)
+        if len(syms) != len(func.free_symbols) :
+            warnings.warn("The number of function free symbols does not match the number of syms.", ResourceWarning)
 
     def generate_univariate_bivariate_repr(self):
         self.lb, self.scaling_factor = generate_bounds(self.bounds, self.dimension)
@@ -137,9 +141,12 @@ class QHD:
 
     def affine_transformation(self, x):
         return self.scaling_factor * x + self.lb
+    
+    def jax_affine_transformation(self, x):
+        return jnp.array(self.scaling_factor) * x + jnp.array(self.lb)
 
     def f_eval(self, x):
-        x = self.affine_transformation(x.astype(jnp.float32))
+        x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
     @staticmethod
@@ -161,9 +168,7 @@ class QHD:
         return bitstring
 
     @staticmethod
-    def classicly_optimize(f, samples, dimension, solver="TNC", affine_transformation=None):
-        if affine_transformation is None:
-            affine_transformation = gen_affine_transformation(1, 0)
+    def classically_optimize(f, samples, dimension, solver="TNC"):
         num_samples = len(samples)
         opt_samples = []
         minimizer = np.zeros(dimension)
@@ -200,9 +205,10 @@ class QHD:
                 raise Exception(
                     "The Specified Post Processing Method is Not Supported."
                 )
-            opt_samples.append(affine_transformation(result.x))
-            if f(result.x) < current_best:
-                current_best = f(opt_samples[k])
+            opt_samples.append(result.x)
+            new_f = f(result.x)
+            if new_f < current_best:
+                current_best = new_f
                 minimizer = opt_samples[k]
         end_time = time.time()
 
@@ -212,9 +218,8 @@ class QHD:
         if self.qhd_samples is None:
             raise Exception("No results on record.")
 
-        opt_samples, minimizer, current_best, post_processing_time = QHD.classicly_optimize(
-            self.f_eval, self.qhd_samples, self.dimension, self.post_processing_method,
-            self.affine_transformation)
+        opt_samples, minimizer, current_best, post_processing_time = QHD.classically_optimize(
+            self.f_eval, self.qhd_samples, self.dimension, self.post_processing_method)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
 
@@ -231,6 +236,7 @@ class QHD:
             coarse_minimizer,
             coarse_minimum,
         )
+        self.info["coarse_minimizer_affined"] = self.affine_transformation(coarse_minimizer)
         self.info["time_end_decoding"] = time.time()
 
         minimum = coarse_minimum
@@ -242,6 +248,7 @@ class QHD:
                 refined_minimizer,
                 refined_minimum,
             )
+            self.info["refined_minimizer_affined"] = self.affine_transformation(refined_minimizer)
             self.info["time_end_finetuning"] = time.time()
 
             minimum = refined_minimum
@@ -261,12 +268,14 @@ class QHD:
     def print_sol_info(self):
         print("* Coarse solution")
         print("Minimizer:", self.info["coarse_minimizer"])
+        print("Affined Minimizer:", self.info["coarse_minimizer_affined"])
         print("Minimum:", self.info["coarse_minimum"])
         print()
 
         if self.info["fine_tune_status"]:
             print("* Fine-tuned solution")
             print("Minimizer:", self.info["refined_minimizer"])
+            print("Affined Minimizer:", self.info["refined_minimizer_affined"])
             print("Minimum:", self.info["refined_minimum"])
             print("Success rate:",
                   calc_success_prob(self.info["refined_minimum"], self.post_processed_samples,
