@@ -8,7 +8,7 @@ import numpy as np
 from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
     gen_new_func_with_affine_trans, generate_bounds, quad_to_gen
 from qhdopt.utils.benchmark_utils import calc_success_prob
-from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, classic_backend
+from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, baseline_backend
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from sympy import lambdify, symbols
@@ -139,7 +139,7 @@ class QHD:
         self.shots = shots
         self.post_processing_method = post_processing_method
 
-    def classic_setup(
+    def baseline_setup(
             self,
             resolution,
             shots=100,
@@ -147,7 +147,7 @@ class QHD:
             post_processing_method="TNC",
     ):
         self.generate_univariate_bivariate_repr()
-        self.backend = classic_backend.ClassicBackend(
+        self.backend = baseline_backend.BaselineBackend(
             resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,

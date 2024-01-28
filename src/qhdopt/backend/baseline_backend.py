@@ -2,7 +2,7 @@ import numpy as np
 import time
 from qhdopt.backend.backend import Backend
 
-class ClassicBackend(Backend):
+class BaselineBackend(Backend):
     def __init__(self,
                  resolution,
                  dimension,
@@ -18,7 +18,7 @@ class ClassicBackend(Backend):
         info["time_end_compile"] = time.time()
         
         if self.embedding_scheme != "onehot":
-            raise Exception("ClassicBackend only supports onehot encoding.")
+            raise Exception("BaselineBackend only supports onehot encoding.")
         
         raw_samples = []
         for _ in range(self.shots):
