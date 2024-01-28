@@ -7,7 +7,7 @@ from qhdopt.utils.decoding_utils import spin_to_bitstring
 from qhdopt.backend.backend import Backend
 
 
-class DwaveBackend(Backend):
+class DWaveBackend(Backend):
     def __init__(self,
                  resolution,
                  dimension,

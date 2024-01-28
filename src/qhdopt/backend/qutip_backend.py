@@ -10,7 +10,7 @@ import numpy as np
 from qhdopt.utils.decoding_utils import binstr_to_bitstr
 
 
-class QutipBackend(Backend):
+class QuTiPBackend(Backend):
     def __init__(self,
                  resolution,
                  dimension,

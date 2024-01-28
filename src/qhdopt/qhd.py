@@ -8,7 +8,7 @@ import numpy as np
 from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
     gen_new_func_with_affine_trans, generate_bounds, quad_to_gen
 from qhdopt.utils.benchmark_utils import calc_success_prob
-from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend
+from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, classic_backend
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from sympy import lambdify, symbols
@@ -36,7 +36,7 @@ class QHD:
         #self.dimension = len(func.free_symbols)
         self.dimension = len(syms)
         if len(syms) != len(func.free_symbols) :
-            warnings.warn("The number of function free symbols does not match the number of syms.", ResourceWarning)
+            warnings.warn("The number of function free symbols does not match the number of syms.", RuntimeWarning)
 
     def generate_univariate_bivariate_repr(self):
         self.lb, self.scaling_factor = generate_bounds(self.bounds, self.dimension)
@@ -66,7 +66,7 @@ class QHD:
             post_processing_method="TNC",
     ):
         self.generate_univariate_bivariate_repr()
-        self.backend = dwave_backend.DwaveBackend(
+        self.backend = dwave_backend.DWaveBackend(
             resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
@@ -97,7 +97,7 @@ class QHD:
             on_simulator=False,
     ):
         self.generate_univariate_bivariate_repr()
-        self.backend = ionq_backend.IonqBackend(
+        self.backend = ionq_backend.IonQBackend(
             resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
@@ -125,7 +125,7 @@ class QHD:
             post_processing_method="TNC",
     ):
         self.generate_univariate_bivariate_repr()
-        self.backend = qutip_backend.QutipBackend(
+        self.backend = qutip_backend.QuTiPBackend(
             resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
@@ -139,6 +139,25 @@ class QHD:
         self.shots = shots
         self.post_processing_method = post_processing_method
 
+    def classic_setup(
+            self,
+            resolution,
+            shots=100,
+            embedding_scheme="onehot",
+            post_processing_method="TNC",
+    ):
+        self.generate_univariate_bivariate_repr()
+        self.backend = classic_backend.ClassicBackend(
+            resolution=resolution,
+            dimension=self.dimension,
+            univariate_dict=self.univariate_dict,
+            bivariate_dict=self.bivariate_dict,
+            shots=shots,
+            embedding_scheme=embedding_scheme,
+        )
+        self.shots = shots
+        self.post_processing_method = post_processing_method
+
     def affine_transformation(self, x):
         return self.scaling_factor * x + self.lb
     
@@ -148,24 +167,6 @@ class QHD:
     def f_eval(self, x):
         x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
-
-    @staticmethod
-    def binstr_to_bitstr(s):
-        return list(map(int, list(s)))
-
-    @staticmethod
-    def spin_to_bitstring(spin_list):
-        # spin_list is a dict
-        list_len = len(spin_list)
-        binary_vec = np.empty((list_len))
-        bitstring = []
-        for k in np.arange(list_len):
-            if spin_list[k] == 1:
-                bitstring.append(0)
-            else:
-                bitstring.append(1)
-
-        return bitstring
 
     @staticmethod
     def classically_optimize(f, samples, dimension, solver="TNC"):
