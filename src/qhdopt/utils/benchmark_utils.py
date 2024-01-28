@@ -1,5 +1,5 @@
 import numpy as np
-from qhdopt.backend.dwave_backend import DwaveBackend
+from qhdopt.backend.dwave_backend import DWaveBackend
 from qhdopt.utils.function_preprocessing_utils import quad_to_gen
 
 
@@ -30,7 +30,7 @@ def run_test(model, tol=1e-3):
     current_best_qhd = model.optimize(verbose=1)
     qhd_ipopt_success_prob = calc_success_prob(current_best_qhd, model.post_processed_samples,
                                                model.shots, model.f_eval, tol)
-    if isinstance(model.backend, DwaveBackend):
+    if isinstance(model.backend, DWaveBackend):
         data_vector[0] = model.info["average_qpu_time"]
     data_vector[1] = model.info["post_processing_time"]
     data_vector[2] = qhd_ipopt_success_prob
@@ -41,7 +41,7 @@ def run_test(model, tol=1e-3):
     model.post_process()
     qhd_tnc_success_prob = calc_success_prob(current_best_qhd, model.post_processed_samples,
                                              model.shots, model.f_eval, tol)
-    if isinstance(model.backend, DwaveBackend):
+    if isinstance(model.backend, DWaveBackend):
         data_vector[4] = model.info["average_qpu_time"]
     data_vector[5] = model.info["post_processing_time"]
     data_vector[6] = qhd_tnc_success_prob

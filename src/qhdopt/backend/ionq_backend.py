@@ -9,7 +9,7 @@ import numpy as np
 from qhdopt.utils.decoding_utils import binstr_to_bitstr
 
 
-class IonqBackend(Backend):
+class IonQBackend(Backend):
     def __init__(self,
                  resolution,
                  dimension,
