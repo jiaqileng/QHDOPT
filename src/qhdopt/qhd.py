@@ -5,13 +5,13 @@ import warnings
 import cyipopt
 import jax.numpy as jnp
 import numpy as np
-from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
+from qhdopt.utils.function_preprocessing_utils import decompose_function, \
     gen_new_func_with_affine_trans, generate_bounds, quad_to_gen
 from qhdopt.utils.benchmark_utils import calc_success_prob
 from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, baseline_backend
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
-from sympy import lambdify, symbols
+from sympy import lambdify
 
 
 class QHD:
@@ -261,7 +261,7 @@ class QHD:
         return minimum
 
     def calc_h_and_J(self):
-        if not isinstance(self.backend, dwave_backend.DwaveBackend):
+        if not isinstance(self.backend, dwave_backend.DWaveBackend):
             raise Exception(
                 "This function is only used for Dwave backends."
             )

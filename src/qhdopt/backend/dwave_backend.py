@@ -99,4 +99,3 @@ class DWaveBackend(Backend):
 
         dwp = DWaveProvider(self.api_key)
         return dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
-
