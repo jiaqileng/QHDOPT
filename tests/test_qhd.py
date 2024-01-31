@@ -25,8 +25,8 @@ def compare_h_j(h_j_1, h_j_2):
     tol = 1e-3
     h1, j1 = h_j_1
     h2, j2 = h_j_2
-    # for i in range(len(h1)):
-    #     assert abs(h1[i] - h2[i]) < tol
+    for i in range(len(h1)):
+        assert abs(h1[i] - h2[i]) < tol
     assert DWaveProvider.compare_qubo(j1, j2) == 0
 
 def calc_h_J(dim, embedding_scheme="hamming"):
