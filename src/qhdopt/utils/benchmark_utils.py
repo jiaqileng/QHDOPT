@@ -49,18 +49,20 @@ def run_test(model, tol=1e-3):
 
     # Run Ipopt with random init
     random_samples = np.random.rand(model.shots, model.dimension)
-    opt_samples, current_best, _, solver_time = QHD.classicly_optimize(model.f_eval, random_samples,
-                                                                       model.dimension,
-                                                                       solver="IPOPT")
+    opt_samples, current_best, _, solver_time = QHD.classically_optimize(model.f_eval,
+                                                                         random_samples,
+                                                                         model.dimension,
+                                                                         solver="IPOPT")
     ipopt_success_prob = calc_success_prob(current_best_qhd, opt_samples, model.shots, model.f_eval,
                                            tol)
     data_vector[8] = solver_time
     data_vector[9] = ipopt_success_prob
 
     # Run TNC with random init
-    opt_samples, current_best, _, solver_time = QHD.classicly_optimize(model.f_eval, random_samples,
-                                                                       model.dimension,
-                                                                       solver="TNC")
+    opt_samples, current_best, _, solver_time = QHD.classically_optimize(model.f_eval,
+                                                                         random_samples,
+                                                                         model.dimension,
+                                                                         solver="TNC")
     _, _, solver_time = model.post_process()
     tnc_success_prob = calc_success_prob(current_best_qhd, opt_samples, model.shots, model.f_eval,
                                          tol)
