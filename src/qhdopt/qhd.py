@@ -1,16 +1,17 @@
 import random
 import time
+import warnings
 
 import cyipopt
 import jax.numpy as jnp
 import numpy as np
-from qhdopt.utils.function_preprocessing_utils import decompose_function, gen_affine_transformation, \
+from qhdopt.utils.function_preprocessing_utils import decompose_function, \
     gen_new_func_with_affine_trans, generate_bounds, quad_to_gen
 from qhdopt.utils.benchmark_utils import calc_success_prob
-from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend
+from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, baseline_backend
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
-from sympy import lambdify, symbols
+from sympy import lambdify
 
 
 class QHD:
@@ -32,11 +33,16 @@ class QHD:
         self.func = func
         self.bounds = bounds
         self.lambda_numpy = lambdify(syms, func, jnp)
-        self.dimension = len(func.free_symbols)
+        # self.dimension = len(func.free_symbols)
+        self.dimension = len(syms)
+        if len(syms) != len(func.free_symbols):
+            warnings.warn("The number of function free symbols does not match the number of syms.",
+                          RuntimeWarning)
 
     def generate_univariate_bivariate_repr(self):
         self.lb, self.scaling_factor = generate_bounds(self.bounds, self.dimension)
-        func, syms = gen_new_func_with_affine_trans(self.affine_transformation, self.func, self.syms)
+        func, syms = gen_new_func_with_affine_trans(self.affine_transformation, self.func,
+                                                    self.syms)
         self.univariate_dict, self.bivariate_dict = decompose_function(func, syms)
 
     @classmethod
@@ -62,7 +68,7 @@ class QHD:
             post_processing_method="TNC",
     ):
         self.generate_univariate_bivariate_repr()
-        self.backend = dwave_backend.DwaveBackend(
+        self.backend = dwave_backend.DWaveBackend(
             resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
@@ -93,7 +99,7 @@ class QHD:
             on_simulator=False,
     ):
         self.generate_univariate_bivariate_repr()
-        self.backend = ionq_backend.IonqBackend(
+        self.backend = ionq_backend.IonQBackend(
             resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
@@ -121,7 +127,7 @@ class QHD:
             post_processing_method="TNC",
     ):
         self.generate_univariate_bivariate_repr()
-        self.backend = qutip_backend.QutipBackend(
+        self.backend = qutip_backend.QuTiPBackend(
             resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
@@ -135,41 +141,42 @@ class QHD:
         self.shots = shots
         self.post_processing_method = post_processing_method
 
+    def baseline_setup(
+            self,
+            resolution,
+            shots=100,
+            embedding_scheme="onehot",
+            post_processing_method="TNC",
+    ):
+        self.generate_univariate_bivariate_repr()
+        self.backend = baseline_backend.BaselineBackend(
+            resolution=resolution,
+            dimension=self.dimension,
+            univariate_dict=self.univariate_dict,
+            bivariate_dict=self.bivariate_dict,
+            shots=shots,
+            embedding_scheme=embedding_scheme,
+        )
+        self.shots = shots
+        self.post_processing_method = post_processing_method
+
     def affine_transformation(self, x):
         return self.scaling_factor * x + self.lb
 
+    def jax_affine_transformation(self, x):
+        return jnp.array(self.scaling_factor) * x + jnp.array(self.lb)
+
     def f_eval(self, x):
-        x = self.affine_transformation(x.astype(jnp.float32))
+        x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
-    @staticmethod
-    def binstr_to_bitstr(s):
-        return list(map(int, list(s)))
-
-    @staticmethod
-    def spin_to_bitstring(spin_list):
-        # spin_list is a dict
-        list_len = len(spin_list)
-        binary_vec = np.empty((list_len))
-        bitstring = []
-        for k in np.arange(list_len):
-            if spin_list[k] == 1:
-                bitstring.append(0)
-            else:
-                bitstring.append(1)
-
-        return bitstring
-
-    @staticmethod
-    def classicly_optimize(f, samples, dimension, solver="TNC", affine_transformation=None):
-        if affine_transformation is None:
-            affine_transformation = gen_affine_transformation(1, 0)
+    def classically_optimize(self, samples=None, solver="TNC"):
         num_samples = len(samples)
         opt_samples = []
-        minimizer = np.zeros(dimension)
-        bounds = Bounds(np.zeros(dimension), np.ones(dimension))
+        minimizer = np.zeros(self.dimension)
+        bounds = Bounds(np.zeros(self.dimension), np.ones(self.dimension))
         current_best = float("inf")
-        f_eval_jit = jit(f)
+        f_eval_jit = jit(self.f_eval)
         f_eval_grad = jit(grad(f_eval_jit))
         obj_hess = jit(jacrev(jacfwd(f_eval_jit)))
         start_time = time.time()
@@ -200,9 +207,10 @@ class QHD:
                 raise Exception(
                     "The Specified Post Processing Method is Not Supported."
                 )
-            opt_samples.append(affine_transformation(result.x))
-            if f(result.x) < current_best:
-                current_best = f(opt_samples[k])
+            opt_samples.append(self.affine_transformation(result.x))
+            val = self.f_eval(result.x)
+            if val < current_best:
+                current_best = val
                 minimizer = opt_samples[k]
         end_time = time.time()
 
@@ -212,9 +220,8 @@ class QHD:
         if self.qhd_samples is None:
             raise Exception("No results on record.")
 
-        opt_samples, minimizer, current_best, post_processing_time = QHD.classicly_optimize(
-            self.f_eval, self.qhd_samples, self.dimension, self.post_processing_method,
-            self.affine_transformation)
+        opt_samples, minimizer, current_best, post_processing_time = self.classically_optimize(
+            self.qhd_samples, self.post_processing_method)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
 
@@ -231,6 +238,7 @@ class QHD:
             coarse_minimizer,
             coarse_minimum,
         )
+        self.info["coarse_minimizer_affined"] = self.affine_transformation(coarse_minimizer)
         self.info["time_end_decoding"] = time.time()
 
         minimum = coarse_minimum
@@ -242,6 +250,7 @@ class QHD:
                 refined_minimizer,
                 refined_minimum,
             )
+            self.info["refined_minimizer_affined"] = self.affine_transformation(refined_minimizer)
             self.info["time_end_finetuning"] = time.time()
 
             minimum = refined_minimum
@@ -252,15 +261,24 @@ class QHD:
 
         return minimum
 
+    def calc_h_and_J(self):
+        if not isinstance(self.backend, dwave_backend.DWaveBackend):
+            raise Exception(
+                "This function is only used for Dwave backends."
+            )
+        return self.backend.calc_h_and_J()
+
     def print_sol_info(self):
         print("* Coarse solution")
         print("Minimizer:", self.info["coarse_minimizer"])
+        print("Affined Minimizer:", self.info["coarse_minimizer_affined"])
         print("Minimum:", self.info["coarse_minimum"])
         print()
 
         if self.info["fine_tune_status"]:
             print("* Fine-tuned solution")
             print("Minimizer:", self.info["refined_minimizer"])
+            print("Affined Minimizer:", self.info["refined_minimizer_affined"])
             print("Minimum:", self.info["refined_minimum"])
             print("Success rate:",
                   calc_success_prob(self.info["refined_minimum"], self.post_processed_samples,

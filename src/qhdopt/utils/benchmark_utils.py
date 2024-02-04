@@ -1,10 +1,10 @@
 import numpy as np
-from qhdopt.backend.dwave_backend import DwaveBackend
+from qhdopt.backend.dwave_backend import DWaveBackend
 from qhdopt.utils.function_preprocessing_utils import quad_to_gen
 
 
 def get_function_from_qp_file(dimension):
-    with open(f"{dimension}d_instance.npy", 'rb') as f:
+    with open(f"resources/{dimension}d_instance.npy", 'rb') as f:
         Q = np.load(f)
         b = np.load(f)
     return quad_to_gen(Q, b)
@@ -30,7 +30,7 @@ def run_test(model, tol=1e-3):
     current_best_qhd = model.optimize(verbose=1)
     qhd_ipopt_success_prob = calc_success_prob(current_best_qhd, model.post_processed_samples,
                                                model.shots, model.f_eval, tol)
-    if isinstance(model.backend, DwaveBackend):
+    if isinstance(model.backend, DWaveBackend):
         data_vector[0] = model.info["average_qpu_time"]
     data_vector[1] = model.info["post_processing_time"]
     data_vector[2] = qhd_ipopt_success_prob
@@ -41,7 +41,7 @@ def run_test(model, tol=1e-3):
     model.post_process()
     qhd_tnc_success_prob = calc_success_prob(current_best_qhd, model.post_processed_samples,
                                              model.shots, model.f_eval, tol)
-    if isinstance(model.backend, DwaveBackend):
+    if isinstance(model.backend, DWaveBackend):
         data_vector[4] = model.info["average_qpu_time"]
     data_vector[5] = model.info["post_processing_time"]
     data_vector[6] = qhd_tnc_success_prob
@@ -49,18 +49,20 @@ def run_test(model, tol=1e-3):
 
     # Run Ipopt with random init
     random_samples = np.random.rand(model.shots, model.dimension)
-    opt_samples, current_best, _, solver_time = QHD.classicly_optimize(model.f_eval, random_samples,
-                                                                       model.dimension,
-                                                                       solver="IPOPT")
+    opt_samples, current_best, _, solver_time = QHD.classically_optimize(model.f_eval,
+                                                                         random_samples,
+                                                                         model.dimension,
+                                                                         solver="IPOPT")
     ipopt_success_prob = calc_success_prob(current_best_qhd, opt_samples, model.shots, model.f_eval,
                                            tol)
     data_vector[8] = solver_time
     data_vector[9] = ipopt_success_prob
 
     # Run TNC with random init
-    opt_samples, current_best, _, solver_time = QHD.classicly_optimize(model.f_eval, random_samples,
-                                                                       model.dimension,
-                                                                       solver="TNC")
+    opt_samples, current_best, _, solver_time = QHD.classically_optimize(model.f_eval,
+                                                                         random_samples,
+                                                                         model.dimension,
+                                                                         solver="TNC")
     _, _, solver_time = model.post_process()
     tnc_success_prob = calc_success_prob(current_best_qhd, opt_samples, model.shots, model.f_eval,
                                          tol)
