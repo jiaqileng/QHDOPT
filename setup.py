@@ -17,7 +17,7 @@ setup(
     install_requires=[
         "jax[cpu]",
         "sympy",
-        "scipy>=1.10.1",
+        "scipy>=1.10.1,<1.12",
         "numpy",
         "jaxlib",
         "qutip"
