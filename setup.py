@@ -19,7 +19,8 @@ setup(
         "sympy",
         "scipy>=1.10.1",
         "numpy",
-        "jaxlib"
+        "jaxlib",
+        "qutip"
     ],
     extras_require={
         "dev": ["tox"],
