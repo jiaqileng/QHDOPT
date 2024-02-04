@@ -171,6 +171,8 @@ class QHD:
         return self.lambda_numpy(*x)
 
     def classically_optimize(self, samples=None, solver="TNC"):
+        if samples is None:
+            samples = np.random.rand(self.shots, self.dimension)
         num_samples = len(samples)
         opt_samples = []
         minimizer = np.zeros(self.dimension)
