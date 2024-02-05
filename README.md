@@ -69,13 +69,13 @@ f = y**1.5 - exp(4*x) * (y-0.75)
 model = QHD.SymPy(f, [x, y], bounds=(0,1))
 ```
 
-Then you need to setup the solver and the backend device (D-wave in this example).
+Then you need to setup the solver and the backend device (D-Wave in this example).
 
 ```python
 model.dwave_setup(resolution=8, api_key="API_key")
 ```
 
-Here `resolution` represents the resolution of the QHD algorithm, and `api_key` represents the API key of the D-wave account obtained at [D-wave Leap](https://cloud.dwavesys.com/leap/).
+Here `resolution` represents the resolution of the QHD algorithm, and `api_key` represents the API key of the D-Wave account obtained at [D-Wave Leap](https://cloud.dwavesys.com/leap/).
 
 Now you can solve the target problem.
 
