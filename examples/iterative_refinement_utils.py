@@ -38,5 +38,5 @@ def IR_QHD(matrix, vector, IRprecision):
             nabla = rho*nabla
         res.append(np.linalg.norm(r))
         iteration=iteration+1
-        print(np.linalg.norm(r))
+        print(f"Error at {iteration}th step: {np.linalg.norm(r)}")
     return res, x
