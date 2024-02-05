@@ -33,7 +33,6 @@ class QHD:
         self.func = func
         self.bounds = bounds
         self.lambda_numpy = lambdify(syms, func, jnp)
-        # self.dimension = len(func.free_symbols)
         self.dimension = len(syms)
         if len(syms) != len(func.free_symbols):
             warnings.warn("The number of function free symbols does not match the number of syms.",
