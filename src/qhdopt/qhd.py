@@ -210,11 +210,11 @@ class QHD:
                 raise Exception(
                     "The Specified Post Processing Method is Not Supported."
                 )
-            opt_samples.append(self.affine_transformation(result.x))
+            opt_samples.append(result.x)
             val = float(self.f_eval(result.x))
             if val < current_best:
                 current_best = val
-                minimizer = opt_samples[k]
+                minimizer = result.x
         end_time = time.time()
 
         return opt_samples, minimizer, current_best, end_time - start_time
@@ -241,7 +241,8 @@ class QHD:
         coarse_minimizer, coarse_minimum, self.qhd_samples = self.backend.decoder(raw_samples,
                                                                                   self.f_eval)
         self.info["coarse_minimum"] = coarse_minimum
-        self.info["coarse_minimizer"] = self.affine_transformation(coarse_minimizer)
+        self.info["coarse_minimizer"] = coarse_minimizer
+        self.info["coarse_minimizer_affined"] = self.jax_affine_transformation(coarse_minimizer)
         self.info["time_end_decoding"] = time.time()
 
         minimum = coarse_minimum
@@ -249,11 +250,9 @@ class QHD:
         self.info["fine_tune_status"] = fine_tune
         if fine_tune:
             refined_minimizer, refined_minimum, _ = self.post_process()
-            self.info["refined_minimizer"], self.info["refined_minimum"] = (
-                refined_minimizer,
-                refined_minimum,
-            )
-            self.info["refined_minimizer"] = self.affine_transformation(refined_minimizer)
+            self.info["refined_minimum"] = refined_minimum
+            self.info["refined_minimizer"] = refined_minimizer
+            self.info["refined_minimizer_affined"] = self.jax_affine_transformation(refined_minimizer)
             self.info["time_end_finetuning"] = time.time()
 
             minimum = refined_minimum
@@ -281,6 +280,7 @@ class QHD:
         if self.info["fine_tune_status"]:
             print("* Fine-tuned solution")
             print("Minimizer:", self.info["refined_minimizer"])
+            print("Affined Minimizer:", self.info["refined_minimizer_affined"])
             print("Minimum:", self.info["refined_minimum"])
             print("Success rate:",
                   calc_success_prob(self.info["refined_minimum"], self.post_processed_samples,
@@ -318,9 +318,9 @@ class QHD:
         """
         
         if self.info["fine_tune_status"]:
-            values = self.info["refined_minimizer"]
+            values = self.info["refined_minimizer_affined"]
         else:
-            values = self.info["coarse_minimizer"]
+            values = self.info["coarse_minimizer_affined"]
 
         if var is None:
             return values
