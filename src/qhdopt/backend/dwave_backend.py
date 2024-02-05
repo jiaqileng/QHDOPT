@@ -53,7 +53,6 @@ class DWaveBackend(Backend):
         penalty_coefficient, chain_strength = self.calc_penalty_coefficient_and_chain_strength()
         self.penalty_coefficient, self.chain_strength = penalty_coefficient, chain_strength
         self.qs.add_evolution(
-            #self.S_x(self.qubits) + self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
             self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
         )
 
@@ -85,8 +84,7 @@ class DWaveBackend(Backend):
 
         if verbose > 0:
             print(f"Backend QPU Time: {info['time_on_machine']}")
-            print(f"Overhead Time: {info['overhead_time']}")
-            print()
+            print(f"Overhead Time: {info['overhead_time']}\n")
 
         self.raw_result = dwp.results()
         raw_samples = []
