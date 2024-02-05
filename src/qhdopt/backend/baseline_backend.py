@@ -13,9 +13,14 @@ class BaselineBackend(Backend):
         super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
                          bivariate_dict)
 
-    def exec(self, verbose, info):
+    def exec(self, verbose, info, compile_only=False):
         info["time_start_compile"] = time.time()
         info["time_end_compile"] = time.time()
+
+        if verbose > 1:
+            self.print_compilation_info()
+        if compile_only:
+            return
         
         if self.embedding_scheme != "onehot":
             raise Exception("BaselineBackend only supports onehot encoding.")
@@ -30,3 +35,6 @@ class BaselineBackend(Backend):
         info["time_end_backend"] = time.time()
         
         return raw_samples
+
+    def print_compilation_info(self):
+        print(f"Number of shots: {self.shots}")

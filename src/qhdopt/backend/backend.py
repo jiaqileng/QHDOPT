@@ -11,7 +11,7 @@ class Backend(ABC):
         self.resolution = resolution
         self.dimension = dimension
         self.qs = QSystem()
-        self.qubits = [Qubit(self.qs) for _ in range(self.dimension * self.resolution)]
+        self.qubits = [Qubit(self.qs, name=f'Q{i}') for i in range(self.dimension * self.resolution)]
         if shots == None :
             shots = 100
         self.shots = shots
@@ -115,8 +115,9 @@ class Backend(ABC):
             qhd_samples.append(bitstring_to_vec(self.embedding_scheme, bitstring, self.dimension, self.resolution))
             if qhd_samples[i] is None:
                 continue
-            if f_eval(qhd_samples[i]) < minimum:
-                minimum = f_eval(qhd_samples[i])
+            new_f = float(f_eval(qhd_samples[i]))
+            if new_f < minimum:
+                minimum = new_f
                 minimizer = qhd_samples[i]
 
         self.qhd_samples = qhd_samples
@@ -147,5 +148,5 @@ class Backend(ABC):
             return (-0.5 * self.resolution ** 2) * hlist_sum([qubit.X for qubit in qubits])
 
     @abstractmethod
-    def exec(self, verbose, info):
+    def exec(self, verbose, info, compile_only=False):
         pass

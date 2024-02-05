@@ -207,7 +207,7 @@ class QHD:
                     "The Specified Post Processing Method is Not Supported."
                 )
             opt_samples.append(result.x)
-            new_f = f(result.x)
+            new_f = float(f(result.x))
             if new_f < current_best:
                 current_best = new_f
                 minimizer = opt_samples[k]
@@ -226,8 +226,11 @@ class QHD:
 
         return minimizer, current_best, post_processing_time
 
-    def optimize(self, fine_tune=True, verbose=0):
-        raw_samples = self.backend.exec(verbose=1, info=self.info)
+    def optimize(self, fine_tune=True, compile_only=False, verbose=0):
+        raw_samples = self.backend.exec(verbose=verbose, info=self.info, compile_only=compile_only)
+
+        if compile_only:
+            return
 
         self.raw_samples = raw_samples
 
@@ -266,6 +269,7 @@ class QHD:
                 "This function is only used for Dwave backends."
             )
         return self.backend.calc_h_and_J()
+    
     def print_sol_info(self):
         print("* Coarse solution")
         print("Minimizer:", self.info["coarse_minimizer"])
