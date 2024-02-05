@@ -12,7 +12,7 @@ def run_qhd(matrix, vector):
     model = QHD.QP(matrix, vector, bounds=(-1, 1))
     model.dwave_setup(20, api_key_from_file='dwave_api_key.txt', embedding_scheme="hamming")
     model.optimize(verbose=0, fine_tune=False)
-    return model.info["coarse_minimizer"]
+    return model.info["coarse_minimizer_affined"]
 
 
 def IR_QHD(matrix, vector, IRprecision):
