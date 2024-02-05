@@ -235,11 +235,8 @@ class QHD:
 
         coarse_minimizer, coarse_minimum, self.qhd_samples = self.backend.decoder(raw_samples,
                                                                                   self.f_eval)
-        self.info["coarse_minimizer"], self.info["coarse_minimum"] = (
-            coarse_minimizer,
-            coarse_minimum,
-        )
-        self.info["coarse_minimizer_affined"] = self.affine_transformation(coarse_minimizer)
+        self.info["coarse_minimum"] = coarse_minimum
+        self.info["coarse_minimizer"] = self.affine_transformation(coarse_minimizer)
         self.info["time_end_decoding"] = time.time()
 
         minimum = coarse_minimum
