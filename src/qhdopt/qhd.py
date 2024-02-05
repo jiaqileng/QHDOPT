@@ -12,6 +12,7 @@ from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, baseline_
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from sympy import lambdify
+import sympy
 
 
 class QHD:
@@ -30,6 +31,7 @@ class QHD:
         self.post_processed_samples = None
         self.info = dict()
         self.syms = syms
+        self.syms_index = {syms[i]:i for i in range(len(syms))}
         self.func = func
         self.bounds = bounds
         self.lambda_numpy = lambdify(syms, func, jnp)
@@ -209,9 +211,9 @@ class QHD:
                     "The Specified Post Processing Method is Not Supported."
                 )
             opt_samples.append(self.affine_transformation(result.x))
-            val = self.f_eval(result.x)
-            if val < current_best:
-                current_best = val
+            new_f = float(self.f_eval(result.x))
+            if new_f < current_best:
+                current_best = new_f
                 minimizer = opt_samples[k]
         end_time = time.time()
 
@@ -228,8 +230,11 @@ class QHD:
 
         return minimizer, current_best, post_processing_time
 
-    def optimize(self, fine_tune=True, verbose=0):
-        raw_samples = self.backend.exec(verbose=1, info=self.info)
+    def optimize(self, fine_tune=True, compile_only=False, verbose=0):
+        raw_samples = self.backend.exec(verbose=verbose, info=self.info, compile_only=compile_only)
+
+        if compile_only:
+            return
 
         self.raw_samples = raw_samples
 
@@ -304,3 +309,23 @@ class QHD:
             total_runtime += finetuning_time
 
         print(f"* Total time: {total_runtime:.3f} s")
+
+    def get_solution(self, var=None):
+        """
+        var can be
+        - None (return all values)
+        - a Symbol (return the value of the symbol)
+        - a list of Symbols (return a list of the values of the symbols)
+        """
+        
+        if self.info["fine_tune_status"]:
+            values = self.info["refined_minimizer_affined"]
+        else:
+            values = self.info["coarse_minimizer_affined"]
+
+        if var is None:
+            return values
+        if isinstance(var, sympy.Symbol):
+            return values[self.syms_index[var]]
+        # Otherwise, v is a list of Symbols.
+        return [values[self.syms_index[v]] for v in var]

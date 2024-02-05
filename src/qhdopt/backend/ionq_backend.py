@@ -91,11 +91,11 @@ class IonQBackend(Backend):
                     theta = np.angle(amplitudes[k])
                     circ.rz(i * n + k, theta)
 
-    def exec(self, verbose, info):
+    def exec(self, verbose, info, compile_only=False):
         if self.embedding_scheme != "onehot":
             raise Exception("IonQ backend must use one-hot embedding.")
 
-        self.qs.add_evolution(10 * self.H_k(), 1)
+        self.qs.add_evolution(self.H_k(), 10)
         phi1 = lambda t: self.gamma / (1 + self.gamma * (t ** 2))
         phi2 = lambda t: self.gamma * (1 + self.gamma * (t ** 2))
         Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict)
@@ -121,6 +121,11 @@ class IonQBackend(Backend):
         )
         info["time_end_compile"] = time.time()
 
+        if verbose > 1:
+            self.print_compilation_info()
+        if compile_only:
+            return
+
         iqp.run(shots=self.shots, on_simulator=self.on_simulator, with_noise=self.with_noise)
         self.raw_result = iqp.results(wait=1)
         raw_samples = []
@@ -131,3 +136,12 @@ class IonQBackend(Backend):
         info["time_end_backend"] = time.time()
 
         return raw_samples
+
+    def print_compilation_info(self):
+        print("* Compilation information")
+        print("Hamiltonian evolution:")
+        print(self.qs)
+        print("Compiled circuit:")
+        print(self.prvd.print_circuit())
+        print(f"Number of shots: {self.shots}")
+
