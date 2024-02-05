@@ -49,13 +49,11 @@ class DWaveBackend(Backend):
         chain_strength = np.max([5e-2, 0.5 * self.penalty_ratio])
         return penalty_coefficient, chain_strength
 
-    def exec(self, verbose, info):
-        (
-            penalty_coefficient,
-            chain_strength,
-        ) = self.calc_penalty_coefficient_and_chain_strength()
+    def exec(self, verbose, info, compile_only=False):
+        penalty_coefficient, chain_strength = self.calc_penalty_coefficient_and_chain_strength()
+        self.penalty_coefficient, self.chain_strength = penalty_coefficient, chain_strength
         self.qs.add_evolution(
-            self.S_x(self.qubits) + self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
+            self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
         )
 
         dwp = DWaveProvider(self.api_key)
@@ -64,22 +62,29 @@ class DWaveBackend(Backend):
         info["time_start_compile"] = time.time()
         dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
         info["time_end_compile"] = time.time()
+
+        if verbose > 1:
+            self.print_compilation_info()
+        if compile_only:
+            return
+
         if verbose > 1:
             print("Submit Task to D-Wave:")
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
-
         dwp.run(shots=self.shots)
         info["time_end_backend"] = time.time()
         info["average_qpu_time"] = dwp.avg_qpu_time
         info["time_on_machine"] = dwp.time_on_machine
         info["overhead_time"] = info["time_end_backend"] - info["time_end_compile"] - \
                                      info["time_on_machine"]
-        if verbose >= 1:
+
+        if verbose > 1:
             print("Received Task from D-Wave:")
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
+
+        if verbose > 0:
             print(f"Backend QPU Time: {info['time_on_machine']}")
-            print(f"Overhead Time: {info['overhead_time']}")
-            print()
+            print(f"Overhead Time: {info['overhead_time']}\n")
 
         self.raw_result = dwp.results()
         raw_samples = []
@@ -99,3 +104,13 @@ class DWaveBackend(Backend):
 
         dwp = DWaveProvider(self.api_key)
         return dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
+
+    def print_compilation_info(self):
+        print("* Compilation information")
+        print("Final Hamiltonian:")
+        print("(Feature under development; only the Hamiltonian is meaningful here)")
+        print(self.qs)
+        print(f"Annealing schedule parameter: {self.anneal_schedule}")
+        print(f"Penalty coefficient: {self.penalty_coefficient}")
+        print(f"Chain strength: {self.chain_strength}")
+        print(f"Number of shots: {self.shots}")

@@ -12,6 +12,7 @@ from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, baseline_
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from sympy import lambdify
+import sympy
 
 
 class QHD:
@@ -30,10 +31,10 @@ class QHD:
         self.post_processed_samples = None
         self.info = dict()
         self.syms = syms
+        self.syms_index = {syms[i]:i for i in range(len(syms))}
         self.func = func
         self.bounds = bounds
         self.lambda_numpy = lambdify(syms, func, jnp)
-        # self.dimension = len(func.free_symbols)
         self.dimension = len(syms)
         if len(syms) != len(func.free_symbols):
             warnings.warn("The number of function free symbols does not match the number of syms.",
@@ -171,6 +172,8 @@ class QHD:
         return self.lambda_numpy(*x)
 
     def classically_optimize(self, samples=None, solver="TNC"):
+        if samples is None:
+            samples = np.random.rand(self.shots, self.dimension)
         num_samples = len(samples)
         opt_samples = []
         minimizer = np.zeros(self.dimension)
@@ -208,7 +211,7 @@ class QHD:
                     "The Specified Post Processing Method is Not Supported."
                 )
             opt_samples.append(self.affine_transformation(result.x))
-            val = self.f_eval(result.x)
+            val = float(self.f_eval(result.x))
             if val < current_best:
                 current_best = val
                 minimizer = opt_samples[k]
@@ -227,18 +230,18 @@ class QHD:
 
         return minimizer, current_best, post_processing_time
 
-    def optimize(self, fine_tune=True, verbose=0):
-        raw_samples = self.backend.exec(verbose=1, info=self.info)
+    def optimize(self, fine_tune=True, compile_only=False, verbose=0):
+        raw_samples = self.backend.exec(verbose=verbose, info=self.info, compile_only=compile_only)
+
+        if compile_only:
+            return
 
         self.raw_samples = raw_samples
 
         coarse_minimizer, coarse_minimum, self.qhd_samples = self.backend.decoder(raw_samples,
                                                                                   self.f_eval)
-        self.info["coarse_minimizer"], self.info["coarse_minimum"] = (
-            coarse_minimizer,
-            coarse_minimum,
-        )
-        self.info["coarse_minimizer_affined"] = self.affine_transformation(coarse_minimizer)
+        self.info["coarse_minimum"] = coarse_minimum
+        self.info["coarse_minimizer"] = self.affine_transformation(coarse_minimizer)
         self.info["time_end_decoding"] = time.time()
 
         minimum = coarse_minimum
@@ -250,7 +253,7 @@ class QHD:
                 refined_minimizer,
                 refined_minimum,
             )
-            self.info["refined_minimizer_affined"] = self.affine_transformation(refined_minimizer)
+            self.info["refined_minimizer"] = self.affine_transformation(refined_minimizer)
             self.info["time_end_finetuning"] = time.time()
 
             minimum = refined_minimum
@@ -278,7 +281,6 @@ class QHD:
         if self.info["fine_tune_status"]:
             print("* Fine-tuned solution")
             print("Minimizer:", self.info["refined_minimizer"])
-            print("Affined Minimizer:", self.info["refined_minimizer_affined"])
             print("Minimum:", self.info["refined_minimum"])
             print("Success rate:",
                   calc_success_prob(self.info["refined_minimum"], self.post_processed_samples,
@@ -306,3 +308,23 @@ class QHD:
             total_runtime += finetuning_time
 
         print(f"* Total time: {total_runtime:.3f} s")
+
+    def get_solution(self, var=None):
+        """
+        var can be
+        - None (return all values)
+        - a Symbol (return the value of the symbol)
+        - a list of Symbols (return a list of the values of the symbols)
+        """
+        
+        if self.info["fine_tune_status"]:
+            values = self.info["refined_minimizer"]
+        else:
+            values = self.info["coarse_minimizer"]
+
+        if var is None:
+            return values
+        if isinstance(var, sympy.Symbol):
+            return values[self.syms_index[var]]
+        # Otherwise, v is a list of Symbols.
+        return [values[self.syms_index[v]] for v in var]

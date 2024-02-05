@@ -29,11 +29,11 @@ class QuTiPBackend(Backend):
         self.gamma = gamma
         self.nsteps = nsteps
 
-    def exec(self, verbose, info):
+    def exec(self, verbose, info, compile_only=False):
         if self.embedding_scheme != "onehot":
             raise Exception("QuTiP simulation must use one-hot embedding.")
 
-        self.qs.add_evolution(10 * self.H_k(), 1)
+        self.qs.add_evolution(self.H_k(), 10)
         phi1 = lambda t: self.gamma / (1 + self.gamma * (t ** 2))
         phi2 = lambda t: self.gamma * (1 + self.gamma * (t ** 2))
         Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p(self.qubits, self.univariate_dict,
@@ -59,6 +59,11 @@ class QuTiPBackend(Backend):
         qpp.compile(self.qs, initial_state=initial_state)
         info["time_end_compile"] = time.time()
 
+        if verbose > 1:
+            self.print_compilation_info()
+        if compile_only:
+            return
+
         qpp.run(nsteps=self.nsteps)
         self.raw_result = qpp.results()
         raw_samples = random.choices(
@@ -68,3 +73,9 @@ class QuTiPBackend(Backend):
         info["time_end_backend"] = time.time()
 
         return raw_samples
+
+    def print_compilation_info(self):
+        print("* Compilation information")
+        print("Hamiltonian evolution:")
+        print(self.qs)
+        print(f"Number of shots: {self.shots}")
