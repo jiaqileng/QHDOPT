@@ -33,14 +33,15 @@ class QHD:
         self.func = func
         self.bounds = bounds
         self.lambda_numpy = lambdify(syms, func, jnp)
-        #self.dimension = len(func.free_symbols)
         self.dimension = len(syms)
-        if len(syms) != len(func.free_symbols) :
-            warnings.warn("The number of function free symbols does not match the number of syms.", RuntimeWarning)
+        if len(syms) != len(func.free_symbols):
+            warnings.warn("The number of function free symbols does not match the number of syms.",
+                          RuntimeWarning)
 
     def generate_univariate_bivariate_repr(self):
         self.lb, self.scaling_factor = generate_bounds(self.bounds, self.dimension)
-        func, syms = gen_new_func_with_affine_trans(self.affine_transformation, self.func, self.syms)
+        func, syms = gen_new_func_with_affine_trans(self.affine_transformation, self.func,
+                                                    self.syms)
         self.univariate_dict, self.bivariate_dict = decompose_function(func, syms)
 
     @classmethod
@@ -160,7 +161,7 @@ class QHD:
 
     def affine_transformation(self, x):
         return self.scaling_factor * x + self.lb
-    
+
     def jax_affine_transformation(self, x):
         return jnp.array(self.scaling_factor) * x + jnp.array(self.lb)
 
@@ -168,14 +169,15 @@ class QHD:
         x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
-    @staticmethod
-    def classically_optimize(f, samples, dimension, solver="TNC"):
+    def classically_optimize(self, samples=None, solver="TNC"):
+        if samples is None:
+            samples = np.random.rand(self.shots, self.dimension)
         num_samples = len(samples)
         opt_samples = []
-        minimizer = np.zeros(dimension)
-        bounds = Bounds(np.zeros(dimension), np.ones(dimension))
+        minimizer = np.zeros(self.dimension)
+        bounds = Bounds(np.zeros(self.dimension), np.ones(self.dimension))
         current_best = float("inf")
-        f_eval_jit = jit(f)
+        f_eval_jit = jit(self.f_eval)
         f_eval_grad = jit(grad(f_eval_jit))
         obj_hess = jit(jacrev(jacfwd(f_eval_jit)))
         start_time = time.time()
@@ -206,8 +208,8 @@ class QHD:
                 raise Exception(
                     "The Specified Post Processing Method is Not Supported."
                 )
-            opt_samples.append(result.x)
-            new_f = float(f(result.x))
+            opt_samples.append(self.affine_transformation(result.x))
+            new_f = float(self.f_eval(result.x))
             if new_f < current_best:
                 current_best = new_f
                 minimizer = opt_samples[k]
@@ -219,8 +221,8 @@ class QHD:
         if self.qhd_samples is None:
             raise Exception("No results on record.")
 
-        opt_samples, minimizer, current_best, post_processing_time = QHD.classically_optimize(
-            self.f_eval, self.qhd_samples, self.dimension, self.post_processing_method)
+        opt_samples, minimizer, current_best, post_processing_time = self.classically_optimize(
+            self.qhd_samples, self.post_processing_method)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
 
@@ -269,7 +271,7 @@ class QHD:
                 "This function is only used for Dwave backends."
             )
         return self.backend.calc_h_and_J()
-    
+
     def print_sol_info(self):
         print("* Coarse solution")
         print("Minimizer:", self.info["coarse_minimizer"])
