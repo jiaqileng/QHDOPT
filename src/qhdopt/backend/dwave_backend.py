@@ -60,7 +60,7 @@ class DWaveBackend(Backend):
         self.prvd = dwp
 
         info["time_start_compile"] = time.time()
-        dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
+        dwp.compile(self.qs, self.anneal_schedule, chain_strength)
         info["time_end_compile"] = time.time()
 
         if verbose > 1:
