@@ -10,9 +10,9 @@ def to_numpy(v):
 def run_qhd(matrix, vector):
     vector = to_numpy(-1 * vector).squeeze()
     model = QHD.QP(matrix, vector, bounds=(-1, 1))
-    model.dwave_setup(20, api_key_from_file='dwave_api_key.txt', embedding_scheme="hamming")
-    model.optimize(verbose=0, fine_tune=False)
-    return model.info["coarse_minimizer_affined"]
+    model.dwave_setup(20, api_key_from_file='/Users/samuelkushnir/Documents/dwave_api_key.txt', embedding_scheme="hamming")
+    response = model.optimize(verbose=0, fine_tune=False)
+    return response.minimizer
 
 
 def IR_QHD(matrix, vector, IRprecision):

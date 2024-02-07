@@ -5,6 +5,8 @@ import warnings
 import cyipopt
 import jax.numpy as jnp
 import numpy as np
+
+from qhdopt.response import Response
 from qhdopt.utils.function_preprocessing_utils import decompose_function, \
     gen_new_func_with_affine_trans, generate_bounds, quad_to_gen
 from qhdopt.utils.benchmark_utils import calc_success_prob
@@ -27,11 +29,11 @@ class QHD:
         self.univariate_dict = None
         self.bivariate_dict = None
         self.raw_result = None
-        self.qhd_samples = None
+        self.decoded_samples = None
         self.post_processed_samples = None
         self.info = dict()
         self.syms = syms
-        self.syms_index = {syms[i]:i for i in range(len(syms))}
+        self.syms_index = {syms[i]: i for i in range(len(syms))}
         self.func = func
         self.bounds = bounds
         self.lambda_numpy = lambdify(syms, func, jnp)
@@ -144,19 +146,15 @@ class QHD:
 
     def baseline_setup(
             self,
-            resolution,
             shots=100,
-            embedding_scheme="onehot",
             post_processing_method="TNC",
     ):
         self.generate_univariate_bivariate_repr()
         self.backend = baseline_backend.BaselineBackend(
-            resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
             bivariate_dict=self.bivariate_dict,
             shots=shots,
-            embedding_scheme=embedding_scheme,
         )
         self.shots = shots
         self.post_processing_method = post_processing_method
@@ -171,9 +169,15 @@ class QHD:
         x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
-    def classically_optimize(self, samples=None, solver="TNC"):
-        if samples is None:
-            samples = np.random.rand(self.shots, self.dimension)
+    def classically_optimize(self, shots=100, solver="TNC", verbose=0):
+        self.baseline_setup(shots, solver)
+        return self.optimize(verbose=verbose)
+
+    def post_process(self):
+        if self.decoded_samples is None:
+            raise Exception("No results on record.")
+        samples = self.decoded_samples
+        solver = self.post_processing_method
         num_samples = len(samples)
         opt_samples = []
         minimizer = np.zeros(self.dimension)
@@ -216,15 +220,7 @@ class QHD:
                 current_best = val
                 minimizer = result.x
         end_time = time.time()
-
-        return opt_samples, minimizer, current_best, end_time - start_time
-
-    def post_process(self):
-        if self.qhd_samples is None:
-            raise Exception("No results on record.")
-
-        opt_samples, minimizer, current_best, post_processing_time = self.classically_optimize(
-            self.qhd_samples, self.post_processing_method)
+        post_processing_time = end_time - start_time
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
 
@@ -236,32 +232,30 @@ class QHD:
         if compile_only:
             return
 
-        self.raw_samples = raw_samples
-
-        coarse_minimizer, coarse_minimum, self.qhd_samples = self.backend.decoder(raw_samples,
-                                                                                  self.f_eval)
-        self.info["coarse_minimum"] = coarse_minimum
-        self.info["coarse_minimizer"] = coarse_minimizer
-        self.info["coarse_minimizer_affined"] = self.jax_affine_transformation(coarse_minimizer)
-        self.info["time_end_decoding"] = time.time()
-
-        minimum = coarse_minimum
-
+        start_time_decoding = time.time()
+        coarse_minimizer, coarse_minimum, self.decoded_samples = self.backend.decoder(raw_samples,
+                                                                                      self.f_eval)
+        end_time_decoding = time.time()
+        self.info["decoding_time"] = end_time_decoding - start_time_decoding
         self.info["fine_tune_status"] = fine_tune
         if fine_tune:
+            start_time_finetuning = time.time()
             refined_minimizer, refined_minimum, _ = self.post_process()
+            end_time_finetuning = time.time()
             self.info["refined_minimum"] = refined_minimum
-            self.info["refined_minimizer"] = refined_minimizer
-            self.info["refined_minimizer_affined"] = self.jax_affine_transformation(refined_minimizer)
-            self.info["time_end_finetuning"] = time.time()
-
-            minimum = refined_minimum
+            self.info["fine_tuning_time"] = end_time_finetuning - start_time_finetuning
+            qhd_response = Response(self.decoded_samples, coarse_minimum, coarse_minimizer,
+                                    self.jax_affine_transformation, self.info,
+                                    self.post_processed_samples, refined_minimum, refined_minimizer)
+        else:
+            qhd_response = Response(self.decoded_samples, coarse_minimum, coarse_minimizer,
+                                    self.jax_affine_transformation, self.info)
 
         if verbose > 0:
-            self.print_sol_info()
-            self.print_time_info()
-
-        return minimum
+            qhd_response.print_time_info()
+            qhd_response.print_solver_info()
+        self.response = qhd_response
+        return qhd_response
 
     def calc_h_and_J(self):
         if not isinstance(self.backend, dwave_backend.DWaveBackend):
@@ -270,45 +264,6 @@ class QHD:
             )
         return self.backend.calc_h_and_J()
 
-    def print_sol_info(self):
-        print("* Coarse solution")
-        print("Minimizer:", self.info["coarse_minimizer"])
-        print("Affined Minimizer:", self.info["coarse_minimizer_affined"])
-        print("Minimum:", self.info["coarse_minimum"])
-        print()
-
-        if self.info["fine_tune_status"]:
-            print("* Fine-tuned solution")
-            print("Minimizer:", self.info["refined_minimizer"])
-            print("Affined Minimizer:", self.info["refined_minimizer_affined"])
-            print("Minimum:", self.info["refined_minimum"])
-            print("Success rate:",
-                  calc_success_prob(self.info["refined_minimum"], self.post_processed_samples,
-                                    self.shots, self.f_eval))
-            print()
-
-    def print_time_info(self):
-        compilation_time = (
-                self.info["time_end_compile"] - self.info["time_start_compile"]
-        )
-        backend_time = self.info["time_end_backend"] - self.info["time_end_compile"]
-        decoding_time = self.info["time_end_decoding"] - self.info["time_end_backend"]
-
-        total_runtime = compilation_time + backend_time + decoding_time
-
-        print("* Runtime breakdown")
-        print(f"SimuQ compilation: {compilation_time:.3f} s")
-        print(f"Backend runtime: {backend_time:.3f} s")
-        print(f"Decoding time: {decoding_time:.3f} s")
-        if self.info["fine_tune_status"]:
-            finetuning_time = (
-                    self.info["time_end_finetuning"] - self.info["time_end_decoding"]
-            )
-            print(f"Fine-tuning time: {finetuning_time:.3f} s")
-            total_runtime += finetuning_time
-
-        print(f"* Total time: {total_runtime:.3f} s")
-
     def get_solution(self, var=None):
         """
         var can be
@@ -316,7 +271,7 @@ class QHD:
         - a Symbol (return the value of the symbol)
         - a list of Symbols (return a list of the values of the symbols)
         """
-        
+
         if self.info["fine_tune_status"]:
             values = self.info["refined_minimizer_affined"]
         else:

@@ -110,7 +110,7 @@ class IonQBackend(Backend):
             state_prep, np.array([1] * self.resolution) / np.sqrt(self.resolution)
         )
 
-        info["time_start_compile"] = time.time()
+        start_compile_time = time.time()
         iqp.compile(
             self.qs,
             backend="aria-1",
@@ -119,13 +119,14 @@ class IonQBackend(Backend):
             verbose=-1,
             tol=0.1,
         )
-        info["time_end_compile"] = time.time()
-
+        end_compile_time = time.time()
+        info["compile_time"] = end_compile_time - start_compile_time
         if verbose > 1:
             self.print_compilation_info()
         if compile_only:
             return
 
+        start_backend_time = time.time()
         iqp.run(shots=self.shots, on_simulator=self.on_simulator, with_noise=self.with_noise)
         self.raw_result = iqp.results(wait=1)
         raw_samples = []
@@ -133,7 +134,8 @@ class IonQBackend(Backend):
             occ = int(self.raw_result[k] * self.shots)
             raw_samples += [k] * occ
         raw_samples = list(map(binstr_to_bitstr, raw_samples))
-        info["time_end_backend"] = time.time()
+        end_backend_time = time.time()
+        info["backend_time"] = end_backend_time - start_backend_time
 
         return raw_samples
 
