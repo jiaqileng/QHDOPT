@@ -169,21 +169,29 @@ class QHD:
         x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
-    def classically_optimize(self, shots=100, solver="TNC", verbose=0, samples=None):
-        self.baseline_setup(shots, solver)
-        return self.optimize(verbose=verbose, samples=samples)
+    def validate_guesses_in_box(self, guesses):
+        for guess in guesses:
+            for i in range(len(self.lb)):
+                lb = self.lb[i]
+                ub = self.lb[i] + self.scaling_factor[i]
+                assert ub > guess[i] > lb
 
-    def post_process(self):
-        if self.decoded_samples is None:
-            raise Exception("No results on record.")
-        samples = self.decoded_samples
-        solver = self.post_processing_method
+    def classically_optimize(self, shots=100, solver="TNC", initial_guesses=None):
+        self.generate_univariate_bivariate_repr()
+        if initial_guesses is None:
+            initial_guesses = np.random.rand(shots, self.dimension)
+        self.validate_guesses_in_box(initial_guesses)
+        f = lambda x: self.lambda_numpy(*x)
+        ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
+        bounds = Bounds(np.array(self.lb), np.array(ub))
+        return self.classically_optimize_helper(initial_guesses, bounds, solver, f)
+
+    def classically_optimize_helper(self, samples, bounds, solver, f):
         num_samples = len(samples)
         opt_samples = []
         minimizer = np.zeros(self.dimension)
-        bounds = Bounds(np.zeros(self.dimension), np.ones(self.dimension))
         current_best = float("inf")
-        f_eval_jit = jit(self.f_eval)
+        f_eval_jit = jit(f)
         f_eval_grad = jit(grad(f_eval_jit))
         obj_hess = jit(jacrev(jacfwd(f_eval_jit)))
         start_time = time.time()
@@ -215,12 +223,20 @@ class QHD:
                     "The Specified Post Processing Method is Not Supported."
                 )
             opt_samples.append(result.x)
-            val = float(self.f_eval(result.x))
+            val = float(f(result.x))
             if val < current_best:
                 current_best = val
                 minimizer = result.x
         end_time = time.time()
         post_processing_time = end_time - start_time
+        return opt_samples, minimizer, current_best, post_processing_time
+    def post_process(self):
+        if self.decoded_samples is None:
+            raise Exception("No results on record.")
+        samples = self.decoded_samples
+        solver = self.post_processing_method
+        bounds = Bounds(np.zeros(self.dimension), np.ones(self.dimension))
+        opt_samples, minimizer, current_best, post_processing_time = self.classically_optimize_helper(samples, bounds, solver, self.f_eval)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
 
