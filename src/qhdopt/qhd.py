@@ -169,9 +169,9 @@ class QHD:
         x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
-    def classically_optimize(self, shots=100, solver="TNC", verbose=0):
+    def classically_optimize(self, shots=100, solver="TNC", verbose=0, samples=None):
         self.baseline_setup(shots, solver)
-        return self.optimize(verbose=verbose)
+        return self.optimize(verbose=verbose, samples=samples)
 
     def post_process(self):
         if self.decoded_samples is None:
@@ -226,7 +226,7 @@ class QHD:
 
         return minimizer, current_best, post_processing_time
 
-    def optimize(self, fine_tune=True, compile_only=False, verbose=0):
+    def optimize(self, fine_tune=True, compile_only=False, verbose=0, samples=None):
         raw_samples = self.backend.exec(verbose=verbose, info=self.info, compile_only=compile_only)
 
         if compile_only:
@@ -235,6 +235,8 @@ class QHD:
         start_time_decoding = time.time()
         coarse_minimizer, coarse_minimum, self.decoded_samples = self.backend.decoder(raw_samples,
                                                                                       self.f_eval)
+        if samples is not None:
+            self.decoded_samples = samples
         end_time_decoding = time.time()
         self.info["decoding_time"] = end_time_decoding - start_time_decoding
         self.info["fine_tune_status"] = fine_tune
