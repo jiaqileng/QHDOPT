@@ -191,7 +191,7 @@ class QHD:
                 ub = self.lb[i] + self.scaling_factor[i]
                 assert ub >= guess[i] >= lb
 
-    def classicall_optimize(self, verbose=0, initial_guess = None, solver="IPOPT"):
+    def classically_optimize(self, verbose=0, initial_guess = None, solver="IPOPT"):
         self.generate_univariate_bivariate_repr()
         if initial_guess is None:
             initial_guess = [self.generate_guess_in_box()]
