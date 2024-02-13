@@ -2,20 +2,24 @@ from qhdopt.utils.benchmark_utils import calc_success_prob
 
 
 class Response:
-    def __init__(self, coarse_samples, coarse_minimum, coarse_minimizer, affine_trans, info,
+    def __init__(self, info,
+                 unit_box_coarse_samples, unit_box_coarse_minimum, unit_box_coarse_minimizer,
+                 coarse_samples, coarse_minimum, coarse_minimizer,
                  refined_samples=None, refined_minimum=None, refined_minimizer=None):
-        self.unit_box_coarse_samples = coarse_samples
+        self.unit_box_coarse_samples = unit_box_coarse_samples
+        self.unit_box_coarse_minimum = unit_box_coarse_minimum
+        self.unit_box_coarse_minimizer = unit_box_coarse_minimizer
+        self.coarse_samples = coarse_samples
         self.coarse_minimum = coarse_minimum
-        self.unit_box_coarse_minimizer = coarse_minimizer
-        self.affine_trans = affine_trans
-        self.info = info
-        self.unit_box_refined_samples = refined_samples
-        self.unit_box_refined_minimizer = refined_minimizer
+        self.coarse_minimizer = coarse_minimizer
+        self.refined_samples = refined_samples
         self.refined_minimum = refined_minimum
-        self.coarse_minimizer = self.affine_trans(self.unit_box_coarse_minimizer)
-
+        self.refined_minimizer = refined_minimizer
+        self.minimizer = self.refined_minimizer if refined_minimizer is not None else self.coarse_minimizer
         self.minimum = self.refined_minimum if refined_minimum is not None else self.coarse_minimum
-        self.unit_box_minimizer = self.unit_box_refined_minimizer if self.unit_box_refined_minimizer is not None else self.unit_box_coarse_minimizer
+        self.info = info
+    
+    '''
     @property
     def coarse_samples(self):
         return [self.affine_trans(sample) for sample in self.unit_box_coarse_samples]
@@ -29,6 +33,8 @@ class Response:
     def minimizer(self):
         minimizer = self.unit_box_refined_minimizer if self.unit_box_refined_minimizer is not None else self.unit_box_coarse_minimizer
         return self.affine_trans(minimizer)
+    '''
+
 
     def print_solver_info(self):
         print("* Coarse solution")
@@ -37,11 +43,11 @@ class Response:
         print("Minimum:", self.coarse_minimum)
         print()
 
-        if self.unit_box_refined_samples is not None:
+        if self.refined_samples is not None:
             print("* Fine-tuned solution")
             print("Minimizer:", self.minimizer)
             print("Minimum:", self.minimum)
-            print("Unit Box Minimizer:", self.unit_box_refined_minimizer)
+            # print("Unit Box Minimizer:", self.unit_box_refined_minimizer)
             print()
 
     def print_time_info(self):
@@ -57,3 +63,4 @@ class Response:
             total_runtime += self.info['fine_tuning_time']
 
         print(f"* Total time: {total_runtime:.3f} s")
+        print()
