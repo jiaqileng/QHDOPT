@@ -176,11 +176,13 @@ class QHD:
         x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
-    def generate_guess_in_box(self):
+    def generate_guess_in_box(self,shots=1):
         """
-        By default, generate a single guess (shot = 1)
+        By default, generate a sample with a single guess (shots = 1)
         """
-        initial_guess = self.lb + self.scaling_factor * np.random.rand(self.dimension)
+        initial_guess = []
+        for _ in range(shots):
+            initial_guess.append(self.lb + self.scaling_factor * np.random.rand(self.dimension))
 
         return initial_guess
     
@@ -191,10 +193,10 @@ class QHD:
                 ub = self.lb[i] + self.scaling_factor[i]
                 assert ub >= guess[i] >= lb
 
-    def classically_optimize(self, verbose=0, initial_guess = None, solver="IPOPT"):
+    def classically_optimize(self, verbose=0, initial_guess=None, solver="IPOPT"):
         self.generate_univariate_bivariate_repr()
         if initial_guess is None:
-            initial_guess = [self.generate_guess_in_box()]
+            initial_guess = self.generate_guess_in_box()
         self.validate_guess_in_box(initial_guess)
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
