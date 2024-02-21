@@ -9,14 +9,14 @@ from qhdopt.utils.function_preprocessing_utils import decompose_function
 
 
 class QHD_Base:
-    def __init__(self, func, syms):
+    def __init__(self, func, syms, info):
         self.func = func
         self.syms = syms
         self.dimension = len(syms)
         self.univariate_dict, self.bivariate_dict = decompose_function(self.func, self.syms)
         lambda_numpy = lambdify(syms, func, jnp)
         self.f_eval = lambda x: lambda_numpy(*x)
-        self.info = dict()
+        self.info = info
 
     def dwave_setup(
             self,
@@ -29,7 +29,6 @@ class QHD_Base:
             penalty_coefficient=0,
             chain_strength=None,
             penalty_ratio=0.75,
-            post_processing_method="TNC",
     ):
         self.backend = dwave_backend.DWaveBackend(
             resolution=resolution,
@@ -45,9 +44,6 @@ class QHD_Base:
             chain_strength=chain_strength,
             penalty_ratio=penalty_ratio,
         )
-        self.shots = shots
-        self.post_processing_method = post_processing_method
-
     def ionq_setup(
             self,
             resolution,
@@ -58,7 +54,6 @@ class QHD_Base:
             penalty_coefficient=0,
             time_discretization=10,
             gamma=5,
-            post_processing_method="TNC",
             on_simulator=False,
     ):
         self.backend = ionq_backend.IonQBackend(
@@ -75,9 +70,6 @@ class QHD_Base:
             on_simulator=on_simulator,
             gamma=gamma,
         )
-        self.shots = shots
-        self.post_processing_method = post_processing_method
-
     def qutip_setup(
             self,
             resolution,
@@ -85,9 +77,7 @@ class QHD_Base:
             embedding_scheme="onehot",
             penalty_coefficient=0,
             time_discretization=10,
-            gamma=5,
-            post_processing_method="TNC",
-    ):
+            gamma=5):
         self.backend = qutip_backend.QuTiPBackend(
             resolution=resolution,
             dimension=self.dimension,
@@ -99,13 +89,9 @@ class QHD_Base:
             time_discretization=time_discretization,
             gamma=gamma,
         )
-        self.shots = shots
-        self.post_processing_method = post_processing_method
-
     def baseline_setup(
             self,
             shots=100,
-            post_processing_method="TNC",
     ):
         self.backend = baseline_backend.BaselineBackend(
             dimension=self.dimension,
@@ -113,10 +99,7 @@ class QHD_Base:
             bivariate_dict=self.bivariate_dict,
             shots=shots,
         )
-        self.shots = shots
-        self.post_processing_method = post_processing_method
-
-    def optimize(self, fine_tune=True, compile_only=False, verbose=0, samples=None):
+    def optimize(self, compile_only=False, verbose=0):
         raw_samples = self.backend.exec(verbose=verbose, info=self.info, compile_only=compile_only)
 
         if compile_only:
@@ -128,11 +111,6 @@ class QHD_Base:
 
         end_time_decoding = time.time()
         self.info["decoding_time"] = end_time_decoding - start_time_decoding
-        qhd_response = Response(self.decoded_samples, coarse_minimum, coarse_minimizer,
-                                    self.jax_affine_transformation, self.info)
+        qhd_response = Response(self.info, self.decoded_samples, coarse_minimum, coarse_minimizer)
 
-        if verbose > 0:
-            qhd_response.print_time_info()
-            qhd_response.print_solver_info()
-        self.response = qhd_response
         return qhd_response
