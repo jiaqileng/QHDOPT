@@ -4,26 +4,20 @@ from qhdopt.backend.backend import Backend
 
 class BaselineBackend(Backend):
     def __init__(self,
-                 resolution,
                  dimension,
                  univariate_dict,
                  bivariate_dict,
-                 shots,
-                 embedding_scheme, ):
-        super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
+                 shots, ):
+        super().__init__(10, dimension, shots, "onehot", univariate_dict,
                          bivariate_dict)
 
     def exec(self, verbose, info, compile_only=False):
-        info["time_start_compile"] = time.time()
-        info["time_end_compile"] = time.time()
+        info["compile_time"] = 0
 
         if verbose > 1:
             self.print_compilation_info()
         if compile_only:
             return
-        
-        if self.embedding_scheme != "onehot":
-            raise Exception("BaselineBackend only supports onehot encoding.")
         
         raw_samples = []
         for _ in range(self.shots):
@@ -32,7 +26,7 @@ class BaselineBackend(Backend):
                 sample[np.random.randint(self.resolution) + j * self.resolution] = 1
             raw_samples.append(sample)
         
-        info["time_end_backend"] = time.time()
+        info["backend_time"] = 0
         
         return raw_samples
 

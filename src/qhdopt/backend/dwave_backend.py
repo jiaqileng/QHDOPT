@@ -59,9 +59,10 @@ class DWaveBackend(Backend):
         dwp = DWaveProvider(self.api_key)
         self.prvd = dwp
 
-        info["time_start_compile"] = time.time()
+        start_compile_time = time.time()
         dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
-        info["time_end_compile"] = time.time()
+        end_compile_time = time.time()
+        info["compile_time"] = end_compile_time - start_compile_time
 
         if verbose > 1:
             self.print_compilation_info()
@@ -72,11 +73,10 @@ class DWaveBackend(Backend):
             print("Submit Task to D-Wave:")
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
         dwp.run(shots=self.shots)
-        info["time_end_backend"] = time.time()
+        info["backend_time"] = time.time() - end_compile_time
         info["average_qpu_time"] = dwp.avg_qpu_time
         info["time_on_machine"] = dwp.time_on_machine
-        info["overhead_time"] = info["time_end_backend"] - info["time_end_compile"] - \
-                                     info["time_on_machine"]
+        info["overhead_time"] = info["backend_time"] - info["time_on_machine"]
 
         if verbose > 1:
             print("Received Task from D-Wave:")
@@ -86,10 +86,7 @@ class DWaveBackend(Backend):
             print(f"Backend QPU Time: {info['time_on_machine']}")
             print(f"Overhead Time: {info['overhead_time']}\n")
 
-        self.raw_result = dwp.results()
-        raw_samples = []
-        for i in range(self.shots):
-            raw_samples.append(spin_to_bitstring(self.raw_result[i]))
+        raw_samples = [spin_to_bitstring(result) for result in dwp.results()]
 
         return raw_samples
 

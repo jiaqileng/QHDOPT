@@ -54,23 +54,27 @@ class QuTiPBackend(Backend):
 
         initial_state = qtp.tensor([initial_state_per_dim] * self.dimension)
 
-        info["time_start_compile"] = time.time()
+        start_compile_time = time.time()
 
         qpp.compile(self.qs, initial_state=initial_state)
-        info["time_end_compile"] = time.time()
+        end_compile_time = time.time()
+        info["compile_time"] = end_compile_time - start_compile_time
+
 
         if verbose > 1:
             self.print_compilation_info()
         if compile_only:
             return
 
+        start_time_backend = time.time()
         qpp.run(nsteps=self.nsteps)
         self.raw_result = qpp.results()
         raw_samples = random.choices(
             list(self.raw_result.keys()), weights=self.raw_result.values(), k=self.shots
         )
         raw_samples = list(map(binstr_to_bitstr, raw_samples))
-        info["time_end_backend"] = time.time()
+        end_time_backend = time.time()
+        info["backend_time"] = end_time_backend - start_time_backend
 
         return raw_samples
 

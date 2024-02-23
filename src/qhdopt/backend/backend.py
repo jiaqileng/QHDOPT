@@ -120,8 +120,6 @@ class Backend(ABC):
                 minimum = new_f
                 minimizer = qhd_samples[i]
 
-        self.qhd_samples = qhd_samples
-
         return minimizer, minimum, qhd_samples
 
     def H_k(self, qubits=None):
