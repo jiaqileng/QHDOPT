@@ -188,6 +188,8 @@ class QHD:
         self.generate_affined_func()
         if initial_guess is None:
             initial_guess = self.generate_guess_in_box()
+        elif isinstance(initial_guess, int):
+            initial_guess = self.generate_guess_in_box(shots=initial_guess)
         self.validate_guess_in_box(initial_guess)
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
@@ -328,3 +330,35 @@ class QHD:
             return values[self.syms_index[var]]
         # Otherwise, v is a list of Symbols.
         return [values[self.syms_index[v]] for v in var]
+    
+    def solver_param_diagnose(self):
+        if not isinstance(self.qhd_base.backend, dwave_backend.DWaveBackend):
+            raise Exception(
+                "This function is only used for D-Wave backends."
+            )
+        
+        if self.response.samples is None:
+            raise Exception(
+                "This function must run after executing QHD on D-Wave."
+            )
+
+        h, J = self.calc_h_and_J()
+        hmax = np.max(np.abs(list(h)))
+        Jmax = np.max(np.abs(list(J.values())))
+        chain_break_fraction = self.qhd_base.backend.dwave_response.record['chain_break_fraction']
+
+        success_prob = calc_success_prob(self.response.minimum, self.post_processed_samples, 
+                                         self.qhd_base.backend.shots, self.fun_eval, 
+                                         tol=1e-3)
+        shots_success = int(success_prob * self.qhd_base.backend.shots)
+        shots_in_subspace = len(self.response.coarse_samples)
+
+        print("***Solver Parameter Diagnosis***")
+        print("---Solver Parameters---")
+        print(f"hmax = {hmax}, Jmax = {Jmax}")
+        print(f"penalty ratio = {self.qhd_base.backend.penalty_ratio}, penalty coefficient = {self.qhd_base.backend.penalty_coefficient}")
+        print(f"chain strength ratio = {self.qhd_base.backend.chain_strength_ratio}, chain strength = {self.qhd_base.backend.chain_strength}")
+        print("---Solution Stats---")
+        print(f"total shots = {self.qhd_base.backend.shots}, shots in subspace = {shots_in_subspace}, successful shots = {shots_success}")
+        print(f"success probability = {success_prob}, median chain break fraction = {np.median(chain_break_fraction)}")
+

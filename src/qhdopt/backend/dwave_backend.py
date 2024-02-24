@@ -20,7 +20,8 @@ class DWaveBackend(Backend):
                  anneal_schedule=None,
                  penalty_coefficient=0,
                  chain_strength=None,
-                 penalty_ratio=0.75, ):
+                 penalty_ratio=0.75,
+                 chain_strength_ratio=1.05):
         super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
                          bivariate_dict)
         if anneal_schedule is None:
@@ -33,6 +34,7 @@ class DWaveBackend(Backend):
         self.penalty_coefficient = penalty_coefficient
         self.chain_strength = chain_strength
         self.penalty_ratio = penalty_ratio
+        self.chain_strength_ratio = chain_strength_ratio
 
     def calc_penalty_coefficient_and_chain_strength(self):
         if self.penalty_coefficient != 0 and self.chain_strength is not None:
@@ -46,7 +48,8 @@ class DWaveBackend(Backend):
         penalty_coefficient = (
             self.penalty_ratio * max_strength if self.embedding_scheme == "unary" else 0
         )
-        chain_strength = np.max([5e-2, 0.5 * self.penalty_ratio])
+        # chain_strength = np.max([5e-2, 0.5 * self.penalty_ratio])
+        chain_strength = np.max([5e-2, self.chain_strength_ratio * penalty_coefficient])
         return penalty_coefficient, chain_strength
 
     def exec(self, verbose, info, compile_only=False):
@@ -72,7 +75,7 @@ class DWaveBackend(Backend):
         if verbose > 1:
             print("Submit Task to D-Wave:")
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
-        dwp.run(shots=self.shots)
+        self.dwave_response = dwp.run(shots=self.shots)
         info["backend_time"] = time.time() - end_compile_time
         info["average_qpu_time"] = dwp.avg_qpu_time
         info["time_on_machine"] = dwp.time_on_machine
