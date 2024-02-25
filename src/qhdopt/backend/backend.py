@@ -1,12 +1,17 @@
 from abc import ABC, abstractmethod
+from typing import List
 
-from simuq import QSystem, hlist_sum, Qubit
+from simuq import QSystem, hlist_sum, Qubit, TIHamiltonian
 import numpy as np
 
 from qhdopt.utils.decoding_utils import bitstring_to_vec
 
 
 class Backend(ABC):
+    """
+    Abstract backend class which defines common functions for all backends and
+    an abstract function: exec which each backend needs to implement.
+    """
     def __init__(self, resolution, dimension, shots, embedding_scheme, univariate_dict, bivariate_dict):
         self.resolution = resolution
         self.dimension = dimension
@@ -19,10 +24,24 @@ class Backend(ABC):
         self.univariate_dict = univariate_dict
         self.bivariate_dict = bivariate_dict
 
-    def S_x(self, qubits):
+    def S_x(self, qubits: List[Qubit]) -> TIHamiltonian:
+        """
+        Generates the hamiltonian S_x hamiltonian as defined
+        in https://arxiv.org/pdf/2303.01471.pdf equation (F.38)
+
+        Args:
+            qubits: List of qubits
+
+        Returns:
+            TIHamiltonian: S_x Hamiltonian
+        """
         return hlist_sum([qubit.X for qubit in qubits])
 
-    def unary_penalty(self, k, qubits):
+    def unary_penalty(self, k: int, qubits: List[Qubit]):
+        """
+        Generates the unary penalty hamiltonian on the kth sub-system
+        as defined in https://arxiv.org/pdf/2401.08550.pdf
+        """
         unary_penalty_sum = lambda k: sum(
             [
                 qubits[j].Z * qubits[j + 1].Z
@@ -146,5 +165,13 @@ class Backend(ABC):
             return (-0.5 * self.resolution ** 2) * hlist_sum([qubit.X for qubit in qubits])
 
     @abstractmethod
-    def exec(self, verbose, info, compile_only=False):
+    def exec(self, verbose: int, info: dict, compile_only=False):
+        """
+        Executes the quantum backend to run QHD
+
+        Args:
+            verbose: Verbosity level
+            info: Dictionary to store information about the execution
+            compile_only: If True, only compile the QHD problem and return the information
+        """
         pass

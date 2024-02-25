@@ -1,9 +1,11 @@
+from typing import Tuple
+
 from qhdopt import QHD
 import numpy as np
 from simuq.dwave import DWaveProvider
 
 
-def convert_key(tup):
+def convert_key(tup: Tuple) -> str:
     a, b = tup
     return f"({a}, {b})"
 
