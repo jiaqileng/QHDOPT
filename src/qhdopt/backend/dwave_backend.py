@@ -19,7 +19,6 @@ class DWaveBackend(Backend):
                  embedding_scheme="unary",
                  anneal_schedule=None,
                  penalty_coefficient=0,
-                 chain_strength=None,
                  penalty_ratio=0.75,
                  chain_strength_ratio=1.05):
         super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
@@ -32,13 +31,14 @@ class DWaveBackend(Backend):
                 self.api_key = f.readline().strip()
         self.anneal_schedule = anneal_schedule
         self.penalty_coefficient = penalty_coefficient
-        self.chain_strength = chain_strength
         self.penalty_ratio = penalty_ratio
         self.chain_strength_ratio = chain_strength_ratio
 
     def calc_penalty_coefficient_and_chain_strength(self):
-        if self.penalty_coefficient != 0 and self.chain_strength is not None:
-            return self.penalty_coefficient, self.chain_strength
+        if self.penalty_coefficient != 0:
+            chain_strength = np.max([5e-2, self.chain_strength_ratio * self.penalty_coefficient])
+            return self.penalty_coefficient, chain_strength
+
         qs = QSystem()
         qubits = [Qubit(qs) for _ in range(len(self.qubits))]
         qs.add_evolution(self.S_x(qubits) + self.H_p(qubits, self.univariate_dict, self.bivariate_dict), 1)
@@ -49,7 +49,8 @@ class DWaveBackend(Backend):
             self.penalty_ratio * max_strength if self.embedding_scheme == "unary" else 0
         )
         # chain_strength = np.max([5e-2, 0.5 * self.penalty_ratio])
-        chain_strength = np.max([5e-2, self.chain_strength_ratio * penalty_coefficient])
+        chain_strength_multiplier = np.max(1, self.penalty_ratio)
+        chain_strength = np.max([5e-2, chain_strength_multiplier * max_strength])
         return penalty_coefficient, chain_strength
 
     def exec(self, verbose, info, compile_only=False):
