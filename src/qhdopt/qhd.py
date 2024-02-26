@@ -1,6 +1,7 @@
 import random
 import time
 import warnings
+from typing import List, Tuple, Union, Type
 
 import cyipopt
 import jax.numpy as jnp
@@ -15,15 +16,24 @@ from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, baseline_
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from sympy import lambdify
+from sympy.core.function import Function
+from sympy.core.symbol import Symbol
 import sympy
 
 
 class QHD:
+    """
+    Provides functionality to run Quantum Hamiltonian Gradient Descent as introduced
+    by https://arxiv.org/pdf/2303.01471.pdf
+
+    A user should initialize QHD through the use of the functions: QHD.QP and QHD.Sympy
+    """
+
     def __init__(
             self,
-            func,
-            syms,
-            bounds=None,
+            func: Function,
+            syms: List[Symbol],
+            bounds: Union[Tuple, List, None] = None,
     ):
         self.qubits = None
         self.qs = None
@@ -41,34 +51,64 @@ class QHD:
             warnings.warn("The number of function free symbols does not match the number of syms.",
                           RuntimeWarning)
 
-    def generate_affined_func(self):
+    def generate_affined_func(self) -> Tuple[Function, List[Symbol]]:
+        """
+        Internal method for generating a new Sympy function with an
+        affine transformation which calculated from the bounds property
+        inputted from the user
+        """
         self.lb, self.scaling_factor = generate_bounds(self.bounds, self.dimension)
         func, syms = gen_new_func_with_affine_trans(self.affine_transformation, self.func,
                                                     self.syms)
         return func, syms
 
     @classmethod
-    def SymPy(cls, func, syms, bounds=None):
+    def SymPy(cls, func: Function, syms: List[Symbol], bounds: Union[Tuple, List, None] = None) -> 'QHD':
+        """
+        Initialize QHD with a sympy function and its symbols
+
+        Args:
+            func: Sympy function
+            syms: List of symbols
+            bounds: Bounds of the function
+
+        Returns:
+            QHD: An instance of QHD
+        """
         return cls(func, syms, bounds)
 
     @classmethod
-    def QP(cls, Q, b, bounds=None):
+    def QP(cls, Q: List[List[float]], b: List[float], bounds: Union[Tuple, List, None] = None) -> 'QHD':
+        """
+        Initialize QHD with a quadratic programming format
+
+        Args:
+            Q: Quadratic matrix
+            b: Linear vector
+            bounds: Bounds of the function
+
+        Returns:
+            QHD: An instance of QHD
+        """
         f, xl = quad_to_gen(Q, b)
         return cls(f, xl, bounds)
 
     def dwave_setup(
             self,
-            resolution,
-            shots=100,
-            api_key=None,
-            api_key_from_file=None,
-            embedding_scheme="unary",
-            anneal_schedule=None,
+            resolution: int,
+            shots :int = 100,
+            api_key: Union[str, None] =None,
+            api_key_from_file: Union[str, None] = None,
+            embedding_scheme: str ="unary",
+            anneal_schedule: Union[List[List[int]], None] = None,
             penalty_coefficient=0,
             chain_strength=None,
             penalty_ratio=0.75,
             post_processing_method="TNC",
     ):
+        """
+
+        """
         func, syms = self.generate_affined_func()
         self.qhd_base = QHD_Base(func, syms, self.info)
         self.qhd_base.dwave_setup(
@@ -162,12 +202,12 @@ class QHD:
         """
         x = x.astype(jnp.float32)
         return self.lambda_numpy(*x)
-    
+
     def f_eval(self, x):
         x = self.jax_affine_transformation(x.astype(jnp.float32))
         return self.lambda_numpy(*x)
 
-    def generate_guess_in_box(self,shots=1):
+    def generate_guess_in_box(self, shots=1):
         """
         By default, generate a sample with a single guess (shots = 1)
         """
@@ -176,7 +216,7 @@ class QHD:
             initial_guess.append(self.lb + self.scaling_factor * np.random.rand(self.dimension))
 
         return initial_guess
-    
+
     def validate_guess_in_box(self, guesses):
         for guess in guesses:
             for i in range(len(self.lb)):
@@ -191,24 +231,25 @@ class QHD:
         self.validate_guess_in_box(initial_guess)
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
-        samples, minimizer, minimum, optimize_time = self.classical_optimizer(initial_guess, bounds, solver, self.fun_eval)
-        
+        samples, minimizer, minimum, optimize_time = self.classical_optimizer(initial_guess, bounds,
+                                                                              solver, self.fun_eval)
+
         self.info["refined_minimum"] = minimum
-        self.info["fine_tuning_time"] = optimize_time 
+        self.info["fine_tuning_time"] = optimize_time
         self.info["decoding_time"] = 0
         self.info["compile_time"] = 0
         self.info["backend_time"] = 0
         self.info["fine_tune_status"] = True
 
-        classical_response = Response(self.info, refined_samples=samples, refined_minimum=minimum, refined_minimizer=minimizer)
+        classical_response = Response(self.info, refined_samples=samples, refined_minimum=minimum,
+                                      refined_minimizer=minimizer)
 
         if verbose > 0:
             classical_response.print_time_info()
             classical_response.print_solver_info()
         self.response = classical_response
-        
+
         return classical_response
-    
 
     def classical_optimizer(self, samples, bounds, solver, f):
         num_samples = len(samples)
@@ -253,9 +294,9 @@ class QHD:
                 minimizer = result.x
         end_time = time.time()
         post_processing_time = end_time - start_time
-        
+
         return opt_samples, minimizer, current_best, post_processing_time
-    
+
     def post_process(self):
         if self.decoded_samples is None:
             raise Exception("No results on record.")
@@ -264,7 +305,8 @@ class QHD:
 
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
-        opt_samples, minimizer, current_best, post_processing_time = self.classical_optimizer(samples, bounds, solver, self.fun_eval)
+        opt_samples, minimizer, current_best, post_processing_time = self.classical_optimizer(
+            samples, bounds, solver, self.fun_eval)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
 
@@ -280,16 +322,18 @@ class QHD:
             end_time_finetuning = time.time()
             self.info["refined_minimum"] = refined_minimum
             self.info["fine_tuning_time"] = end_time_finetuning - start_time_finetuning
-            qhd_response = Response(self.info, self.decoded_samples, response.coarse_minimum, response.coarse_minimizer,
+            qhd_response = Response(self.info, self.decoded_samples, response.coarse_minimum,
+                                    response.coarse_minimizer,
                                     self.post_processed_samples, refined_minimum, refined_minimizer)
         else:
-            qhd_response = Response(self.info, self.decoded_samples, response.coarse_minimum, response.coarse_minimizer)
+            qhd_response = Response(self.info, self.decoded_samples, response.coarse_minimum,
+                                    response.coarse_minimizer)
 
         if verbose > 0:
             qhd_response.print_time_info()
             qhd_response.print_solver_info()
         self.response = qhd_response
-        
+
         return qhd_response
 
     def affine_mapping(self, minimizer, minimum, samples):
@@ -303,13 +347,13 @@ class QHD:
             original_samples.append(self.affine_transformation(samples[k]))
 
         return original_minimizer, original_minimum, original_samples
-    
+
     def calc_h_and_J(self):
         if not isinstance(self.qhd_base.backend, dwave_backend.DWaveBackend):
             raise Exception(
                 "This function is only used for Dwave backends."
             )
-        
+
         return self.qhd_base.backend.calc_h_and_J()
 
     def get_solution(self, var=None):
