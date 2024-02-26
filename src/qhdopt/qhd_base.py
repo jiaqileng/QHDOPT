@@ -27,8 +27,8 @@ class QHD_Base:
             embedding_scheme="unary",
             anneal_schedule=None,
             penalty_coefficient=0,
-            chain_strength=None,
             penalty_ratio=0.75,
+            chain_strength_ratio=1.05
     ):
         self.backend = dwave_backend.DWaveBackend(
             resolution=resolution,
@@ -41,8 +41,8 @@ class QHD_Base:
             embedding_scheme=embedding_scheme,
             anneal_schedule=anneal_schedule,
             penalty_coefficient=penalty_coefficient,
-            chain_strength=chain_strength,
             penalty_ratio=penalty_ratio,
+            chain_strength_ratio=chain_strength_ratio
         )
     def ionq_setup(
             self,
