@@ -49,7 +49,7 @@ class DWaveBackend(Backend):
             self.penalty_ratio * max_strength if self.embedding_scheme == "unary" else 0
         )
         # chain_strength = np.max([5e-2, 0.5 * self.penalty_ratio])
-        chain_strength_multiplier = np.max(1, self.penalty_ratio)
+        chain_strength_multiplier = np.max([1, self.penalty_ratio])
         chain_strength = np.max([5e-2, chain_strength_multiplier * max_strength])
         return penalty_coefficient, chain_strength
 
