@@ -65,8 +65,8 @@ class QHD:
             embedding_scheme="unary",
             anneal_schedule=None,
             penalty_coefficient=0,
-            chain_strength=None,
             penalty_ratio=0.75,
+            chain_strength_ratio=1.05,
             post_processing_method="TNC",
     ):
         func, syms = self.generate_affined_func()
@@ -79,8 +79,8 @@ class QHD:
             embedding_scheme=embedding_scheme,
             anneal_schedule=anneal_schedule,
             penalty_coefficient=penalty_coefficient,
-            chain_strength=chain_strength,
             penalty_ratio=penalty_ratio,
+            chain_strength_ratio=chain_strength_ratio,
         )
         self.shots = shots
         self.post_processing_method = post_processing_method
