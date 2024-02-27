@@ -13,7 +13,9 @@ from sympy.core.function import Function
 from sympy.core.symbol import Symbol
 
 from qhdopt.qhd_base import QHD_Base
+from qhdopt.backend import dwave_backend
 from qhdopt.response import Response
+from qhdopt.utils.benchmark_utils import calc_success_prob
 from qhdopt.utils.function_preprocessing_utils import gen_new_func_with_affine_trans, \
     generate_bounds, quad_to_gen
 
@@ -443,13 +445,13 @@ class QHD:
             end_time_finetuning = time.time()
             self.info["refined_minimum"] = refined_minimum
             self.info["fine_tuning_time"] = end_time_finetuning - start_time_finetuning
-            qhd_response = Response(self.info, self.decoded_samples, response.coarse_minimum,
-                                    response.coarse_minimizer,
+            qhd_response = Response(self.info, self.decoded_samples, self.coarse_minimum,
+                                    self.coarse_minimizer,
                                     self.post_processed_samples, refined_minimum, refined_minimizer,
                                     self.fun_eval)
         else:
-            qhd_response = Response(self.info, self.decoded_samples, response.coarse_minimum,
-                                    response.coarse_minimizer, self.fun_eval)
+            qhd_response = Response(self.info, self.decoded_samples, self.coarse_minimum,
+                                    self.coarse_minimizer, self.fun_eval)
 
         if verbose > 0:
             qhd_response.print_time_info()
@@ -509,7 +511,7 @@ class QHD:
                 "This function must run after executing QHD on D-Wave."
             )
 
-        h, J = self.calc_h_and_J()
+        h, J, _ = self.qhd_base.backend.exec(verbose=0, info=self.qhd_base.info, compile_only=True)
         hmax = np.max(np.abs(list(h)))
         Jmax = np.max(np.abs(list(J.values())))
         chain_break_fraction = self.qhd_base.backend.dwave_response.record['chain_break_fraction']
