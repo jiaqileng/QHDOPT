@@ -101,8 +101,8 @@ class QHD:
             embedding_scheme: str = "unary",
             anneal_schedule: Optional[List[List[int]]] = None,
             penalty_coefficient: float = 0,
-            chain_strength: Optional[float] = None,
             penalty_ratio: float = 0.75,
+            chain_strength_ratio: float = 1.05,
             post_processing_method: str = "TNC",
     ):
         """
@@ -116,9 +116,9 @@ class QHD:
             embedding_scheme: Method used for mapping logical variables to physical qubits.
             anneal_schedule: Custom annealing schedule for quantum annealing.
             penalty_coefficient: Coefficient used to enforce constraints in the quantum model.
-            chain_strength: Strength of the chains in the qubit mapping.
             penalty_ratio: Ratio used to calculate penalty coefficients.
             post_processing_method: Classical optimization method used after quantum sampling.
+            chain_strength_ratio: Ratio of strength of chains in embedding.
         """
         func, syms = self.generate_affined_func()
         self.qhd_base = QHD_Base(func, syms, self.info)
@@ -130,8 +130,8 @@ class QHD:
             embedding_scheme=embedding_scheme,
             anneal_schedule=anneal_schedule,
             penalty_coefficient=penalty_coefficient,
-            chain_strength=chain_strength,
             penalty_ratio=penalty_ratio,
+            chain_strength_ratio=chain_strength_ratio,
         )
         self.shots = shots
         self.post_processing_method = post_processing_method
@@ -311,6 +311,8 @@ class QHD:
         self.generate_affined_func()
         if initial_guess is None:
             initial_guess = self.generate_guess_in_box()
+        elif isinstance(initial_guess, int):
+            initial_guess = self.generate_guess_in_box(shots=initial_guess)
         self.validate_guess_in_box(initial_guess)
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
@@ -495,3 +497,35 @@ class QHD:
             return values[self.syms_index[var]]
         # Otherwise, v is a list of Symbols.
         return [values[self.syms_index[v]] for v in var]
+    
+    def solver_param_diagnose(self):
+        if not isinstance(self.qhd_base.backend, dwave_backend.DWaveBackend):
+            raise Exception(
+                "This function is only used for D-Wave backends."
+            )
+        
+        if self.response.samples is None:
+            raise Exception(
+                "This function must run after executing QHD on D-Wave."
+            )
+
+        h, J = self.calc_h_and_J()
+        hmax = np.max(np.abs(list(h)))
+        Jmax = np.max(np.abs(list(J.values())))
+        chain_break_fraction = self.qhd_base.backend.dwave_response.record['chain_break_fraction']
+
+        success_prob = calc_success_prob(self.response.minimum, self.post_processed_samples, 
+                                         self.qhd_base.backend.shots, self.fun_eval, 
+                                         tol=1e-3)
+        shots_success = int(success_prob * self.qhd_base.backend.shots)
+        shots_in_subspace = len(self.response.coarse_samples)
+
+        print("***Solver Parameter Diagnosis***")
+        print("---Solver Parameters---")
+        print(f"hmax = {hmax}, Jmax = {Jmax}")
+        print(f"penalty ratio = {self.qhd_base.backend.penalty_ratio}, penalty coefficient = {self.qhd_base.backend.penalty_coefficient}")
+        print(f"chain strength ratio = {self.qhd_base.backend.chain_strength_ratio}, chain strength = {self.qhd_base.backend.chain_strength}")
+        print("---Solution Stats---")
+        print(f"total shots = {self.qhd_base.backend.shots}, shots in subspace = {shots_in_subspace}, successful shots = {shots_success}")
+        print(f"success probability = {success_prob}, median chain break fraction = {np.median(chain_break_fraction)}")
+

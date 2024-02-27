@@ -41,8 +41,8 @@ class QHD_Base:
         embedding_scheme: str = "unary",
         anneal_schedule: Optional[List[List[int]]] = None,
         penalty_coefficient: float = 0,
-        chain_strength: Optional[float] = None,
         penalty_ratio: float = 0.75,
+        chain_strength_ratio: float = 1.05,
     ) -> None:
         """
         Sets up the D-Wave backend for quantum optimization.
@@ -55,8 +55,8 @@ class QHD_Base:
             embedding_scheme: Embedding scheme for problem mapping.
             anneal_schedule: Custom annealing schedule.
             penalty_coefficient: Coefficient for penalty terms.
-            chain_strength: Strength of chains in embedding.
             penalty_ratio: Ratio of penalty terms in the objective function.
+            chain_strength_ratio: Ratio of strength of chains in embedding.
         """
         self.backend = dwave_backend.DWaveBackend(
             resolution=resolution,
@@ -69,8 +69,8 @@ class QHD_Base:
             embedding_scheme=embedding_scheme,
             anneal_schedule=anneal_schedule,
             penalty_coefficient=penalty_coefficient,
-            chain_strength=chain_strength,
             penalty_ratio=penalty_ratio,
+            chain_strength_ratio=chain_strength_ratio
         )
 
     def ionq_setup(
