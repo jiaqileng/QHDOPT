@@ -4,6 +4,8 @@ from qhdopt import QHD
 import numpy as np
 from simuq.dwave import DWaveProvider
 
+from qhdopt.utils.benchmark_utils import calc_h_and_J
+
 
 def convert_key(tup: Tuple) -> str:
     a, b = tup
@@ -38,7 +40,7 @@ def calc_h_J(dim, embedding_scheme="hamming"):
     model = QHD.QP(Q, b)
     model.dwave_setup(10, api_key="", embedding_scheme=embedding_scheme, penalty_coefficient=3e-2,
                       chain_strength=0)
-    return model.calc_h_and_J()
+    return calc_h_and_J(model)
 
 
 def qhd_qp_for_dimension(dim):

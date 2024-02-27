@@ -89,7 +89,7 @@ class DWaveBackend(Backend):
         if verbose > 1:
             self.print_compilation_info()
         if compile_only:
-            return
+            return dwp.prog
 
         if verbose > 1:
             print("Submit Task to D-Wave:")

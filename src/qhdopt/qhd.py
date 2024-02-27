@@ -1,24 +1,21 @@
-import random
 import time
 import warnings
-from typing import List, Tuple, Union, Type
+from typing import List, Tuple, Union, Optional, Callable
 
 import cyipopt
 import jax.numpy as jnp
 import numpy as np
-
-from qhdopt.qhd_base import QHD_Base
-from qhdopt.response import Response
-from qhdopt.utils.function_preprocessing_utils import decompose_function, \
-    gen_new_func_with_affine_trans, generate_bounds, quad_to_gen
-from qhdopt.utils.benchmark_utils import calc_success_prob
-from qhdopt.backend import qutip_backend, ionq_backend, dwave_backend, baseline_backend
+import sympy
 from jax import grad, jacfwd, jacrev, jit
 from scipy.optimize import Bounds, minimize
 from sympy import lambdify
 from sympy.core.function import Function
 from sympy.core.symbol import Symbol
-import sympy
+
+from qhdopt.qhd_base import QHD_Base
+from qhdopt.response import Response
+from qhdopt.utils.function_preprocessing_utils import gen_new_func_with_affine_trans, \
+    generate_bounds, quad_to_gen
 
 
 class QHD:
@@ -63,7 +60,8 @@ class QHD:
         return func, syms
 
     @classmethod
-    def SymPy(cls, func: Function, syms: List[Symbol], bounds: Union[Tuple, List, None] = None) -> 'QHD':
+    def SymPy(cls, func: Function, syms: List[Symbol],
+              bounds: Union[Tuple, List, None] = None) -> 'QHD':
         """
         Initialize QHD with a sympy function and its symbols
 
@@ -78,7 +76,8 @@ class QHD:
         return cls(func, syms, bounds)
 
     @classmethod
-    def QP(cls, Q: List[List[float]], b: List[float], bounds: Union[Tuple, List, None] = None) -> 'QHD':
+    def QP(cls, Q: List[List[float]], b: List[float],
+           bounds: Union[Tuple, List, None] = None) -> 'QHD':
         """
         Initialize QHD with a quadratic programming format
 
@@ -96,18 +95,30 @@ class QHD:
     def dwave_setup(
             self,
             resolution: int,
-            shots :int = 100,
-            api_key: Union[str, None] =None,
-            api_key_from_file: Union[str, None] = None,
-            embedding_scheme: str ="unary",
-            anneal_schedule: Union[List[List[int]], None] = None,
-            penalty_coefficient=0,
-            chain_strength=None,
-            penalty_ratio=0.75,
-            post_processing_method="TNC",
+            shots: int = 100,
+            api_key: Optional[str] = None,
+            api_key_from_file: Optional[str] = None,
+            embedding_scheme: str = "unary",
+            anneal_schedule: Optional[List[List[int]]] = None,
+            penalty_coefficient: float = 0,
+            chain_strength: Optional[float] = None,
+            penalty_ratio: float = 0.75,
+            post_processing_method: str = "TNC",
     ):
         """
+        Configures the settings for quantum optimization using D-Wave systems.
 
+        Args:
+            resolution: The number of bits representing each variable.
+            shots: The number of times the quantum device runs to find the solution.
+            api_key: Direct API key for connecting to D-Wave's cloud service.
+            api_key_from_file: Path to a file containing the D-Wave API key.
+            embedding_scheme: Method used for mapping logical variables to physical qubits.
+            anneal_schedule: Custom annealing schedule for quantum annealing.
+            penalty_coefficient: Coefficient used to enforce constraints in the quantum model.
+            chain_strength: Strength of the chains in the qubit mapping.
+            penalty_ratio: Ratio used to calculate penalty coefficients.
+            post_processing_method: Classical optimization method used after quantum sampling.
         """
         func, syms = self.generate_affined_func()
         self.qhd_base = QHD_Base(func, syms, self.info)
@@ -127,17 +138,32 @@ class QHD:
 
     def ionq_setup(
             self,
-            resolution,
-            shots=100,
-            api_key=None,
-            api_key_from_file=None,
-            embedding_scheme="onehot",
-            penalty_coefficient=0,
-            time_discretization=10,
-            gamma=5,
-            post_processing_method="TNC",
-            on_simulator=False,
+            resolution: int,
+            shots: int = 100,
+            api_key: Optional[str] = None,
+            api_key_from_file: Optional[str] = None,
+            embedding_scheme: str = "onehot",
+            penalty_coefficient: float = 0,
+            time_discretization: int = 10,
+            gamma: float = 5,
+            post_processing_method: str = "TNC",
+            on_simulator: bool = False,
     ):
+        """
+        Configures the settings for running QHD using IonQ systems.
+
+        Args:
+            resolution: The resolution of the quantum representation.
+            shots: Number of measurements to perform on the quantum state.
+            api_key: API key for accessing IonQ's quantum computing service.
+            api_key_from_file: Path to file containing the API key for IonQ.
+            embedding_scheme: Strategy for encoding problem variables into quantum states.
+            penalty_coefficient: Multiplier for penalty terms in the quantum formulation.
+            time_discretization: Number of time steps for simulating quantum evolution.
+            gamma: Scaling factor for the quantum evolution's time discretization.
+            post_processing_method: Algorithm for refining quantum results classically.
+            on_simulator: Flag to indicate if the quantum simulation should run on a simulator.
+        """
         func, syms = self.generate_affined_func()
         self.qhd_base = QHD_Base(func, syms, self.info)
         self.qhd_base.ionq_setup(
@@ -156,14 +182,26 @@ class QHD:
 
     def qutip_setup(
             self,
-            resolution,
-            shots=100,
-            embedding_scheme="onehot",
-            penalty_coefficient=0,
-            time_discretization=10,
-            gamma=5,
-            post_processing_method="TNC",
+            resolution: int,
+            shots: int = 100,
+            embedding_scheme: str = "onehot",
+            penalty_coefficient: float = 0,
+            time_discretization: int = 10,
+            gamma: float = 5,
+            post_processing_method: str = "TNC",
     ):
+        """
+        Configures the settings for quantum simulation of QHD using QuTiP.
+
+        Args:
+            resolution: The resolution for encoding variables into quantum states.
+            shots: Number of repetitions for the quantum state measurement.
+            embedding_scheme: Encoding strategy for representing problem variables.
+            penalty_coefficient: Coefficient for penalties in the quantum problem formulation.
+            time_discretization: Number of intervals for the quantum evolution simulation.
+            gamma: Parameter controlling the strength of the quantum system evolution.
+            post_processing_method: Classical method used for post-processing quantum results.
+        """
         func, syms = self.generate_affined_func()
         self.qhd_base = QHD_Base(func, syms, self.info)
         self.qhd_base.qutip_setup(
@@ -179,9 +217,16 @@ class QHD:
 
     def baseline_setup(
             self,
-            shots=100,
-            post_processing_method="TNC",
+            shots: int = 100,
+            post_processing_method: str = "TNC",
     ):
+        """
+        Sets up the baseline configuration for classical optimization comparison.
+
+        Args:
+            shots: The number of solution samples to generate.
+            post_processing_method: The classical optimization algorithm to use.
+        """
         func, syms = self.generate_affined_func()
         self.qhd_base = QHD_Base(func, syms, self.info)
         self.qhd_base.baseline_setup(
@@ -190,26 +235,47 @@ class QHD:
         self.shots = shots
         self.post_processing_method = post_processing_method
 
-    def affine_transformation(self, x):
+    def affine_transformation(self, x: np.ndarray) -> np.ndarray:
+        """
+        Applies an affine transformation to the input array.
+
+        Args:
+            x: The input array to be transformed.
+
+        Returns:
+            Transformed array according to the defined scaling factor and lower bounds.
+        """
         return self.scaling_factor * x + self.lb
 
-    def jax_affine_transformation(self, x):
+    def jax_affine_transformation(self, x: jnp.ndarray) -> jnp.ndarray:
+        """
+        Applies an affine transformation using JAX library for automatic differentiation.
+
+        Args:
+            x: The input array to be transformed using JAX.
+
+        Returns:
+            A JAX array after applying the affine transformation.
+        """
         return jnp.array(self.scaling_factor) * x + jnp.array(self.lb)
 
-    def fun_eval(self, x):
+    def fun_eval(self, x: np.ndarray):
         """
-        x is in the original box (non-normalized)
+        function evaluation when x is in the original box (non-normalized)
         """
         x = x.astype(jnp.float32)
         return self.lambda_numpy(*x)
 
-    def f_eval(self, x):
-        x = self.jax_affine_transformation(x.astype(jnp.float32))
-        return self.lambda_numpy(*x)
-
-    def generate_guess_in_box(self, shots=1):
+    def generate_guess_in_box(self, shots: int = 1) -> List[np.ndarray]:
         """
+        Generates initial guesses within the defined bounds.
         By default, generate a sample with a single guess (shots = 1)
+
+        Args:
+            shots: Number of guesses to generate.
+
+        Returns:
+            A list containing the generated guesses.
         """
         initial_guess = []
         for _ in range(shots):
@@ -217,7 +283,13 @@ class QHD:
 
         return initial_guess
 
-    def validate_guess_in_box(self, guesses):
+    def validate_guess_in_box(self, guesses: List[np.ndarray]) -> None:
+        """
+        Validates if the provided guesses are within the bounds.
+
+        Args:
+            guesses: List of guesses to validate.
+        """
         for guess in guesses:
             for i in range(len(self.lb)):
                 lb = self.lb[i]
@@ -225,14 +297,27 @@ class QHD:
                 assert ub >= guess[i] >= lb
 
     def classically_optimize(self, verbose=0, initial_guess=None, solver="IPOPT"):
+        """
+        Optimizes a given function classically over a set of samples and within specified bounds.
+
+        Args:
+            samples: Initial samples for the optimization.
+            bounds: Bounds within which the optimization is to be performed.
+            solver: The optimization method
+
+        Returns:
+            Response object containing samples, minimum, minimizer, and other info
+        """
         self.generate_affined_func()
         if initial_guess is None:
             initial_guess = self.generate_guess_in_box()
         self.validate_guess_in_box(initial_guess)
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
-        samples, minimizer, minimum, optimize_time = self.classical_optimizer(initial_guess, bounds,
-                                                                              solver, self.fun_eval)
+        samples, minimizer, minimum, optimize_time = self.classical_optimizer_helper(initial_guess,
+                                                                                     bounds,
+                                                                                     solver,
+                                                                                     self.fun_eval)
 
         self.info["refined_minimum"] = minimum
         self.info["fine_tuning_time"] = optimize_time
@@ -251,7 +336,21 @@ class QHD:
 
         return classical_response
 
-    def classical_optimizer(self, samples, bounds, solver, f):
+    def classical_optimizer_helper(self, samples: List[np.ndarray], bounds: Bounds, solver: str,
+                                   f: Callable) -> Tuple[
+        List[np.ndarray], np.ndarray, float, float]:
+        """
+        Helper function to optimize a given function classically over a set of samples and within specified bounds.
+
+        Args:
+            samples: Initial samples for the optimization.
+            bounds: Bounds within which the optimization is to be performed.
+            solver: The optimization method
+            f: The function to be optimized
+
+        Returns:
+            Tuple of samples, minimizer, minimum, and post-processing time
+        """
         num_samples = len(samples)
         opt_samples = []
         minimizer = np.zeros(self.dimension)
@@ -297,7 +396,13 @@ class QHD:
 
         return opt_samples, minimizer, current_best, post_processing_time
 
-    def post_process(self):
+    def post_process(self) -> Tuple[np.ndarray, float, float]:
+        """
+        Private function to post-process the QHD samples returned from a quantum backend.
+
+        Returns:
+            Tuple of minimizer, minimum, and post-processing time
+        """
         if self.decoded_samples is None:
             raise Exception("No results on record.")
         samples = self.decoded_samples
@@ -305,16 +410,30 @@ class QHD:
 
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
-        opt_samples, minimizer, current_best, post_processing_time = self.classical_optimizer(
+        opt_samples, minimizer, current_best, post_processing_time = self.classical_optimizer_helper(
             samples, bounds, solver, self.fun_eval)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
 
         return minimizer, current_best, post_processing_time
 
-    def optimize(self, fine_tune=True, compile_only=False, verbose=0):
+    def optimize(self, fine_tune: bool = True, compile_only: bool = False, verbose: int = 0) -> Response:
+        """
+        User-facing function to run QHD on the optimization problem
+
+        Args:
+            fine_tune: Flag to indicate if fine-tuning should be performed.
+            compile_only: Flag to indicate if only the compilation should be performed.
+            verbose: Verbosity level (0, 1, 2 for increasing detail).
+
+        Returns:
+            Response object containing samples, minimum, minimizer, and other info
+        """
         response = self.qhd_base.optimize(compile_only, verbose)
-        self.decoded_samples = response.samples
+        if compile_only:
+            return response
+        self.coarse_minimizer, self.coarse_minimum, self.decoded_samples = self.affine_mapping(
+            response.minimizer, response.minimum, response.samples)
         self.info["fine_tune_status"] = fine_tune
         if fine_tune:
             start_time_finetuning = time.time()
@@ -324,10 +443,11 @@ class QHD:
             self.info["fine_tuning_time"] = end_time_finetuning - start_time_finetuning
             qhd_response = Response(self.info, self.decoded_samples, response.coarse_minimum,
                                     response.coarse_minimizer,
-                                    self.post_processed_samples, refined_minimum, refined_minimizer)
+                                    self.post_processed_samples, refined_minimum, refined_minimizer,
+                                    self.fun_eval)
         else:
             qhd_response = Response(self.info, self.decoded_samples, response.coarse_minimum,
-                                    response.coarse_minimizer)
+                                    response.coarse_minimizer, self.fun_eval)
 
         if verbose > 0:
             qhd_response.print_time_info()
@@ -336,7 +456,18 @@ class QHD:
 
         return qhd_response
 
-    def affine_mapping(self, minimizer, minimum, samples):
+    def affine_mapping(self, minimizer: np.ndarray, minimum: float, samples: List[np.ndarray]) -> Tuple[np.ndarray, float, List[np.ndarray]]:
+        """
+        Maps the minimizer and samples from the normalized space to the original space.
+
+        Args:
+            minimizer: The minimizer in the normalized space.
+            minimum: The minimum value of the function.
+            samples: The samples in the normalized space.
+
+        Returns:
+            Tuple of the minimizer, minimum, and samples in the original space.
+        """
         original_minimizer = self.affine_transformation(minimizer)
         original_minimum = minimum
         original_samples = []
@@ -347,14 +478,6 @@ class QHD:
             original_samples.append(self.affine_transformation(samples[k]))
 
         return original_minimizer, original_minimum, original_samples
-
-    def calc_h_and_J(self):
-        if not isinstance(self.qhd_base.backend, dwave_backend.DWaveBackend):
-            raise Exception(
-                "This function is only used for Dwave backends."
-            )
-
-        return self.qhd_base.backend.calc_h_and_J()
 
     def get_solution(self, var=None):
         """
