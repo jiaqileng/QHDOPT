@@ -1,3 +1,5 @@
+from typing import Tuple, List
+
 from simuq import QSystem, Qubit
 from simuq.dwave import DWaveProvider
 import numpy as np
@@ -8,6 +10,10 @@ from qhdopt.backend.backend import Backend
 
 
 class DWaveBackend(Backend):
+    """
+    Backend implementation for Dwave. Find more information about Dwave's
+    backend here: https://docs.dwavesys.com/docs/latest/c_gs_2.html
+    """
     def __init__(self,
                  resolution,
                  dimension,
@@ -34,11 +40,15 @@ class DWaveBackend(Backend):
         self.penalty_ratio = penalty_ratio
         self.chain_strength_ratio = chain_strength_ratio
 
-    def calc_penalty_coefficient_and_chain_strength(self):
+
+    def calc_penalty_coefficient_and_chain_strength(self) -> Tuple[float, float]:
+        """
+        Calculates the penalty coefficient and chain strength using self.penalty_ratio.
+        """
         if self.penalty_coefficient != 0:
             chain_strength = np.max([5e-2, self.chain_strength_ratio * self.penalty_coefficient])
             return self.penalty_coefficient, chain_strength
-
+          
         qs = QSystem()
         qubits = [Qubit(qs) for _ in range(len(self.qubits))]
         qs.add_evolution(self.S_x(qubits) + self.H_p(qubits, self.univariate_dict, self.bivariate_dict), 1)
@@ -53,7 +63,21 @@ class DWaveBackend(Backend):
         chain_strength = np.max([5e-2, chain_strength_multiplier * max_strength])
         return penalty_coefficient, chain_strength
 
-    def exec(self, verbose, info, compile_only=False):
+    def exec(self, verbose: int, info: dict, compile_only=False) -> List[List[int]]:
+        """
+        Execute the Dwave quantum backend using the problem description specified in
+        self.univariate_dict and self.bivariate_dict. It uses self.H_p to generate
+        the problem hamiltonian and then uses Simuq's DwaveProvider to run the evolution
+        on Dwave.
+
+        Args:
+            verbose: Verbosity level.
+            info: Dictionary to store information about the execution.
+            compile_only: If True, the function only compiles the problem and does not run it.
+
+        Returns:
+            raw_samples: A list of raw samples from the Dwave backend.
+        """
         penalty_coefficient, chain_strength = self.calc_penalty_coefficient_and_chain_strength()
         self.penalty_coefficient, self.chain_strength = penalty_coefficient, chain_strength
         self.qs.add_evolution(
@@ -61,7 +85,6 @@ class DWaveBackend(Backend):
         )
 
         dwp = DWaveProvider(self.api_key)
-        self.prvd = dwp
 
         start_compile_time = time.time()
         dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
@@ -71,7 +94,7 @@ class DWaveBackend(Backend):
         if verbose > 1:
             self.print_compilation_info()
         if compile_only:
-            return
+            return dwp.prog
 
         if verbose > 1:
             print("Submit Task to D-Wave:")
@@ -94,7 +117,14 @@ class DWaveBackend(Backend):
 
         return raw_samples
 
-    def calc_h_and_J(self):
+    def calc_h_and_J(self) -> Tuple[List, dict]:
+        """
+        Function for debugging to provide h and J which uniquely specify the problem hamiltonian
+
+        Returns:
+            h: List of h values
+            J: Dictionary of J values
+        """
         (
             penalty_coefficient,
             chain_strength,

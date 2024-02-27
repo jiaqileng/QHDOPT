@@ -1,4 +1,6 @@
 import numpy as np
+
+from qhdopt.backend import dwave_backend
 from qhdopt.backend.dwave_backend import DWaveBackend
 from qhdopt.utils.function_preprocessing_utils import quad_to_gen
 
@@ -13,6 +15,15 @@ def get_function_from_qp_file(dimension):
 def TTS(t_f, p_s, success_prob=0.99):
     p_s = min(p_s, success_prob)
     return t_f * (np.log(1 - success_prob) / (np.log(1 - p_s)))
+
+
+def calc_h_and_J(qhd: 'QHD'):
+    if not isinstance(qhd.qhd_base.backend, dwave_backend.DWaveBackend):
+        raise Exception(
+            "This function is only used for Dwave backends."
+        )
+
+    return qhd.qhd_base.backend.calc_h_and_J()
 
 
 def calc_success_prob(best, samples, num_shots, f, tol=1e-3):

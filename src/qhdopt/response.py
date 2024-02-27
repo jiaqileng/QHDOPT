@@ -4,7 +4,7 @@ from qhdopt.utils.benchmark_utils import calc_success_prob
 class Response:
     def __init__(self, info,
                  coarse_samples=None, coarse_minimum=None, coarse_minimizer=None,
-                 refined_samples=None, refined_minimum=None, refined_minimizer=None):
+                 refined_samples=None, refined_minimum=None, refined_minimizer=None, func=None):
         self.coarse_samples = coarse_samples
         self.coarse_minimum = coarse_minimum
         self.coarse_minimizer = coarse_minimizer
@@ -15,6 +15,20 @@ class Response:
         self.minimizer = self.refined_minimizer if refined_minimizer is not None else self.coarse_minimizer
         self.minimum = self.refined_minimum if refined_minimum is not None else self.coarse_minimum
         self.info = info
+        self.func = func
+
+    def get_percentage_in_embedding_subspace(self):
+        number_in_subspace = sum([0 if el is None else 1 for el in self.samples])
+        return number_in_subspace / len(self.samples)
+
+    def get_success_probability(self, tol=1e-3):
+        if self.func == None:
+            raise Exception("No function to evaluate the samples.")
+        successes = 0
+        for sample in self.samples:
+            if sample is not None and abs(self.func(sample) - self.minimum) < tol:
+                successes +=1
+        return successes / len(self.samples)
 
 
     def print_solver_info(self):
