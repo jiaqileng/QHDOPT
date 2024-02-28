@@ -87,7 +87,7 @@ class DWaveBackend(Backend):
         dwp = DWaveProvider(self.api_key)
 
         start_compile_time = time.time()
-        dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
+        dwp.compile(self.qs, self.anneal_schedule, chain_strength)
         end_compile_time = time.time()
         info["compile_time"] = end_compile_time - start_compile_time
 
@@ -134,7 +134,7 @@ class DWaveBackend(Backend):
         )
 
         dwp = DWaveProvider(self.api_key)
-        return dwp.compile(self.qs, self.anneal_schedule, chain_strength, self.shots)
+        return dwp.compile(self.qs, self.anneal_schedule, chain_strength)
 
     def print_compilation_info(self):
         print("* Compilation information")
