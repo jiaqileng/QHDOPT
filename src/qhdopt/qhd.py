@@ -249,18 +249,6 @@ class QHD:
         """
         return self.scaling_factor * x + self.lb
 
-    def jax_affine_transformation(self, x: jnp.ndarray) -> jnp.ndarray:
-        """
-        Applies an affine transformation using JAX library for automatic differentiation.
-
-        Args:
-            x: The input array to be transformed using JAX.
-
-        Returns:
-            A JAX array after applying the affine transformation.
-        """
-        return jnp.array(self.scaling_factor) * x + jnp.array(self.lb)
-
     def fun_eval(self, x: np.ndarray):
         """
         function evaluation when x is in the original box (non-normalized)
