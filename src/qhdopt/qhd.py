@@ -15,7 +15,6 @@ from sympy.core.symbol import Symbol
 from qhdopt.qhd_base import QHD_Base
 from qhdopt.backend import dwave_backend
 from qhdopt.response import Response
-from qhdopt.utils.benchmark_utils import calc_success_prob
 from qhdopt.utils.function_preprocessing_utils import gen_new_func_with_affine_trans, \
     generate_bounds, quad_to_gen
 
@@ -286,7 +285,7 @@ class QHD:
                 ub = self.lb[i] + self.scaling_factor[i]
                 assert ub >= guess[i] >= lb
 
-    def classically_optimize(self, verbose=0, initial_guess=None, solver="IPOPT"):
+    def classically_optimize(self, verbose=0, initial_guess=None, num_shots=100, solver="IPOPT") -> Response:
         """
         Optimizes a given function classically over a set of samples and within specified bounds.
 
@@ -300,26 +299,28 @@ class QHD:
         """
         self.generate_affined_func()
         if initial_guess is None:
-            initial_guess = self.generate_guess_in_box()
-        elif isinstance(initial_guess, int):
-            initial_guess = self.generate_guess_in_box(shots=initial_guess)
+            initial_guess = self.generate_guess_in_box(num_shots)
+
         self.validate_guess_in_box(initial_guess)
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
+        start_time = time.time()
         samples, minimizer, minimum, optimize_time = self.classical_optimizer_helper(initial_guess,
                                                                                      bounds,
                                                                                      solver,
                                                                                      self.fun_eval)
+        end_time = time.time()
 
         self.info["refined_minimum"] = minimum
-        self.info["fine_tuning_time"] = optimize_time
+        self.info["refining_time"] = optimize_time
         self.info["decoding_time"] = 0
         self.info["compile_time"] = 0
         self.info["backend_time"] = 0
-        self.info["fine_tune_status"] = True
+        self.info["refine_status"] = True
+        self.info["refining_time"] = end_time - start_time
 
         classical_response = Response(self.info, refined_samples=samples, refined_minimum=minimum,
-                                      refined_minimizer=minimizer)
+                                      refined_minimizer=minimizer, func=self.fun_eval)
 
         if verbose > 0:
             classical_response.print_time_info()
@@ -409,12 +410,12 @@ class QHD:
 
         return minimizer, current_best, post_processing_time
 
-    def optimize(self, fine_tune: bool = True, compile_only: bool = False, verbose: int = 0) -> Response:
+    def optimize(self, refine: bool = True, compile_only: bool = False, verbose: int = 0) -> Response:
         """
         User-facing function to run QHD on the optimization problem
 
         Args:
-            fine_tune: Flag to indicate if fine-tuning should be performed.
+            refine: Flag to indicate if fine-tuning should be performed.
             compile_only: Flag to indicate if only the compilation should be performed.
             verbose: Verbosity level (0, 1, 2 for increasing detail).
 
@@ -426,13 +427,13 @@ class QHD:
             return response
         self.coarse_minimizer, self.coarse_minimum, self.decoded_samples = self.affine_mapping(
             response.minimizer, response.minimum, response.samples)
-        self.info["fine_tune_status"] = fine_tune
-        if fine_tune:
+        self.info["refine_status"] = refine
+        if refine:
             start_time_finetuning = time.time()
             refined_minimizer, refined_minimum, _ = self.post_process()
             end_time_finetuning = time.time()
             self.info["refined_minimum"] = refined_minimum
-            self.info["fine_tuning_time"] = end_time_finetuning - start_time_finetuning
+            self.info["refining_time"] = end_time_finetuning - start_time_finetuning
             qhd_response = Response(self.info, self.decoded_samples, self.coarse_minimum,
                                     self.coarse_minimizer,
                                     self.post_processed_samples, refined_minimum, refined_minimizer,
@@ -466,8 +467,9 @@ class QHD:
 
         for k in range(len(samples)):
             if samples[k] is None:
-                continue
-            original_samples.append(self.affine_transformation(samples[k]))
+                original_samples.append(None)
+            else:
+                original_samples.append(self.affine_transformation(samples[k]))
 
         return original_minimizer, original_minimum, original_samples
 
@@ -504,10 +506,6 @@ class QHD:
         Jmax = np.max(np.abs(list(J.values())))
         chain_break_fraction = self.qhd_base.backend.dwave_response.record['chain_break_fraction']
 
-        success_prob = calc_success_prob(self.response.minimum, self.post_processed_samples, 
-                                         self.qhd_base.backend.shots, self.fun_eval, 
-                                         tol=1e-3)
-        shots_success = int(success_prob * self.qhd_base.backend.shots)
         shots_in_subspace = len(self.response.coarse_samples)
 
         print("***Solver Parameter Diagnosis***")
@@ -516,6 +514,6 @@ class QHD:
         print(f"penalty ratio = {self.qhd_base.backend.penalty_ratio}, penalty coefficient = {self.qhd_base.backend.penalty_coefficient}")
         print(f"chain strength ratio = {self.qhd_base.backend.chain_strength_ratio}, chain strength = {self.qhd_base.backend.chain_strength}")
         print("---Solution Stats---")
-        print(f"total shots = {self.qhd_base.backend.shots}, shots in subspace = {shots_in_subspace}, successful shots = {shots_success}")
-        print(f"success probability = {success_prob}, median chain break fraction = {np.median(chain_break_fraction)}")
+        print(f"total shots = {self.qhd_base.backend.shots}, shots in subspace = {shots_in_subspace}")
+        print(f"median chain break fraction = {np.median(chain_break_fraction)}")
 
