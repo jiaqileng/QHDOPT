@@ -63,6 +63,19 @@ class DWaveBackend(Backend):
         chain_strength = np.max([5e-2, chain_strength_multiplier * max_strength])
         return penalty_coefficient, chain_strength
 
+    def compile(self, info):
+        penalty_coefficient, chain_strength = self.calc_penalty_coefficient_and_chain_strength()
+        self.penalty_coefficient, self.chain_strength = penalty_coefficient, chain_strength
+        self.qs.add_evolution(
+            self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
+        )
+
+        self.dwp = DWaveProvider(self.api_key)
+        start_compile_time = time.time()
+        self.dwp.compile(self.qs, self.anneal_schedule, chain_strength)
+        end_compile_time = time.time()
+        info["compile_time"] = end_compile_time - start_compile_time
+
     def exec(self, verbose: int, info: dict, compile_only=False) -> List[List[int]]:
         """
         Execute the Dwave quantum backend using the problem description specified in
@@ -78,31 +91,20 @@ class DWaveBackend(Backend):
         Returns:
             raw_samples: A list of raw samples from the Dwave backend.
         """
-        penalty_coefficient, chain_strength = self.calc_penalty_coefficient_and_chain_strength()
-        self.penalty_coefficient, self.chain_strength = penalty_coefficient, chain_strength
-        self.qs.add_evolution(
-            self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
-        )
-
-        dwp = DWaveProvider(self.api_key)
-
-        start_compile_time = time.time()
-        dwp.compile(self.qs, self.anneal_schedule, chain_strength)
-        end_compile_time = time.time()
-        info["compile_time"] = end_compile_time - start_compile_time
+        self.compile(info)
 
         if verbose > 1:
             self.print_compilation_info()
-        if compile_only:
-            return dwp.prog
 
         if verbose > 1:
             print("Submit Task to D-Wave:")
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
-        self.dwave_response = dwp.run(shots=self.shots)
-        info["backend_time"] = time.time() - end_compile_time
-        info["average_qpu_time"] = dwp.avg_qpu_time
-        info["time_on_machine"] = dwp.time_on_machine
+
+        start_run_time = time.time()
+        self.dwave_response = self.dwp.run(shots=self.shots)
+        info["backend_time"] = time.time() - start_run_time
+        info["average_qpu_time"] = self.dwp.avg_qpu_time
+        info["time_on_machine"] = self.dwp.time_on_machine
         info["overhead_time"] = info["backend_time"] - info["time_on_machine"]
 
         if verbose > 1:
@@ -113,7 +115,7 @@ class DWaveBackend(Backend):
             print(f"Backend QPU Time: {info['time_on_machine']}")
             print(f"Overhead Time: {info['overhead_time']}\n")
 
-        raw_samples = [spin_to_bitstring(result) for result in dwp.results()]
+        raw_samples = [spin_to_bitstring(result) for result in self.dwp.results()]
 
         return raw_samples
 

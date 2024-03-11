@@ -1,7 +1,7 @@
 import time
-from typing import Callable, List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional
 
-from sympy import lambdify, Symbol
+from sympy import lambdify, Symbol, Function
 import jax.numpy as jnp
 
 from qhdopt.backend import dwave_backend, ionq_backend, qutip_backend, baseline_backend
@@ -10,9 +10,15 @@ from qhdopt.utils.function_preprocessing_utils import decompose_function
 
 
 class QHD_Base:
+    """
+    Provides functionality to run Quantum Hamiltonian Gradient Descent as introduced
+    by https://arxiv.org/pdf/2303.01471.pdf
+
+    A user should initialize QHD through the use of the functions: QHD_Base.QP and QHD_Base_Sympy
+    """
     def __init__(
         self,
-        func: Callable,
+        func: Function,
         syms: List[Symbol],
         info: Dict[str, Union[int, float, str]]
     ):
@@ -163,26 +169,25 @@ class QHD_Base:
             shots=shots,
         )
 
+    def compile_only(self):
+        self.backend.compile(self.info)
+        return self.backend
+
     def optimize(
             self,
-            compile_only: bool = False,
             verbose: int = 0
     ) -> Optional[Response]:
         """
         Executes the optimization process.
 
         Args:
-            compile_only: Flag for compilation without execution.
             verbose: Verbosity level (0, 1, 2 for increasing detail).
 
         Returns:
             An instance of Response containing optimization results, None if compile_only is True.
         """
-        raw_samples = self.backend.exec(verbose=verbose, info=self.info, compile_only=compile_only)
+        raw_samples = self.backend.exec(verbose=verbose, info=self.info)
 
-        if compile_only:
-            # note that when compile_only is true, this is the result of just compile.
-            return raw_samples
 
         start_time_decoding = time.time()
         coarse_minimizer, coarse_minimum, self.decoded_samples = self.backend.decoder(raw_samples,

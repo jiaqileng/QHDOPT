@@ -12,6 +12,7 @@ from sympy import lambdify
 from sympy.core.function import Function
 from sympy.core.symbol import Symbol
 
+from qhdopt.backend.backend import Backend
 from qhdopt.qhd_base import QHD_Base
 from qhdopt.backend import dwave_backend
 from qhdopt.response import Response
@@ -410,7 +411,10 @@ class QHD:
 
         return minimizer, current_best, post_processing_time
 
-    def optimize(self, refine: bool = True, compile_only: bool = False, verbose: int = 0) -> Response:
+    def compile_only(self) -> Backend:
+        return self.qhd_base.compile_only()
+
+    def optimize(self, refine: bool = True, verbose: int = 0) -> Response:
         """
         User-facing function to run QHD on the optimization problem
 
@@ -422,9 +426,7 @@ class QHD:
         Returns:
             Response object containing samples, minimum, minimizer, and other info
         """
-        response = self.qhd_base.optimize(compile_only, verbose)
-        if compile_only:
-            return response
+        response = self.qhd_base.optimize(verbose)
         self.coarse_minimizer, self.coarse_minimum, self.decoded_samples = self.affine_mapping(
             response.minimizer, response.minimum, response.samples)
         self.info["refine_status"] = refine

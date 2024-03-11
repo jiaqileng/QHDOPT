@@ -199,14 +199,22 @@ class Backend(ABC):
         else:
             return (-0.5 * self.resolution ** 2) * hlist_sum([qubit.X for qubit in qubits])
 
+    def compile(self, info):
+        """
+        Compiles the problem description into a format that the backend can run.
+
+        Args:
+            info: Dictionary to store information about the compilation
+        """
+        pass
+
     @abstractmethod
-    def exec(self, verbose: int, info: dict, compile_only=False):
+    def exec(self, verbose: int, info: dict):
         """
         Executes the quantum backend to run QHD
 
         Args:
             verbose: Verbosity level
             info: Dictionary to store information about the execution
-            compile_only: If True, only compile the QHD problem and return the information
         """
         pass

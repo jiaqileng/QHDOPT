@@ -29,7 +29,7 @@ class QuTiPBackend(Backend):
         self.gamma = gamma
         self.nsteps = nsteps
 
-    def exec(self, verbose, info, compile_only=False):
+    def compile(self, info):
         if self.embedding_scheme != "onehot":
             raise Exception("QuTiP simulation must use one-hot embedding.")
 
@@ -40,8 +40,7 @@ class QuTiPBackend(Backend):
                                                                  self.bivariate_dict)
         self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.time_discretization))
 
-        qpp = QuTiPProvider()
-        self.prvd = qpp
+        self.qpp = QuTiPProvider()
 
         g = qtp.Qobj([[1], [0]])
         e = qtp.Qobj([[0], [1]])
@@ -56,19 +55,20 @@ class QuTiPBackend(Backend):
 
         start_compile_time = time.time()
 
-        qpp.compile(self.qs, initial_state=initial_state)
+        self.qpp.compile(self.qs, initial_state=initial_state)
         end_compile_time = time.time()
         info["compile_time"] = end_compile_time - start_compile_time
 
-
+    def exec(self, verbose, info, compile_only=False):
+        self.compile(info)
         if verbose > 1:
             self.print_compilation_info()
         if compile_only:
             return
 
         start_time_backend = time.time()
-        qpp.run(nsteps=self.nsteps)
-        self.raw_result = qpp.results()
+        self.qpp.run(nsteps=self.nsteps)
+        self.raw_result = self.qpp.results()
         raw_samples = random.choices(
             list(self.raw_result.keys()), weights=self.raw_result.values(), k=self.shots
         )
