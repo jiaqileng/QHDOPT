@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>QHDOPT &#8212; QHDOPT 0.2.0 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=61cd365c" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
     <script src="_static/documentation_options.js?v=1d4f410f"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
@@ -49,7 +49,54 @@ QHDOPT has a built-in compiler powered by SimuQ, a framework for programming and
 QHDOPT automatically post-processes the results returned by the quantum machines. The post-processing includes decoding the raw measurement results and improving their precision (i.e., fine-tuning) via a classical local solver. Users may disable the fine-tuning if needed.</p>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#qhdopt.qhd.QHD"><code class="docutils literal notranslate"><span class="pre">QHD</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.QP"><code class="docutils literal notranslate"><span class="pre">QHD.QP()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.SymPy"><code class="docutils literal notranslate"><span class="pre">QHD.SymPy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.affine_mapping"><code class="docutils literal notranslate"><span class="pre">QHD.affine_mapping()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.affine_transformation"><code class="docutils literal notranslate"><span class="pre">QHD.affine_transformation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.baseline_setup"><code class="docutils literal notranslate"><span class="pre">QHD.baseline_setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.classical_optimizer_helper"><code class="docutils literal notranslate"><span class="pre">QHD.classical_optimizer_helper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.classically_optimize"><code class="docutils literal notranslate"><span class="pre">QHD.classically_optimize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.dwave_setup"><code class="docutils literal notranslate"><span class="pre">QHD.dwave_setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.fun_eval"><code class="docutils literal notranslate"><span class="pre">QHD.fun_eval()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.generate_affined_func"><code class="docutils literal notranslate"><span class="pre">QHD.generate_affined_func()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.generate_guess_in_box"><code class="docutils literal notranslate"><span class="pre">QHD.generate_guess_in_box()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.get_solution"><code class="docutils literal notranslate"><span class="pre">QHD.get_solution()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.ionq_setup"><code class="docutils literal notranslate"><span class="pre">QHD.ionq_setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.optimize"><code class="docutils literal notranslate"><span class="pre">QHD.optimize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.post_process"><code class="docutils literal notranslate"><span class="pre">QHD.post_process()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.qutip_setup"><code class="docutils literal notranslate"><span class="pre">QHD.qutip_setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd.QHD.validate_guess_in_box"><code class="docutils literal notranslate"><span class="pre">QHD.validate_guess_in_box()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#qhdopt.qhd_base.QHD_Base"><code class="docutils literal notranslate"><span class="pre">QHD_Base</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd_base.QHD_Base.baseline_setup"><code class="docutils literal notranslate"><span class="pre">QHD_Base.baseline_setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd_base.QHD_Base.dwave_setup"><code class="docutils literal notranslate"><span class="pre">QHD_Base.dwave_setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd_base.QHD_Base.ionq_setup"><code class="docutils literal notranslate"><span class="pre">QHD_Base.ionq_setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd_base.QHD_Base.optimize"><code class="docutils literal notranslate"><span class="pre">QHD_Base.optimize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.qhd_base.QHD_Base.qutip_setup"><code class="docutils literal notranslate"><span class="pre">QHD_Base.qutip_setup()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#qhdopt.backend.backend.Backend"><code class="docutils literal notranslate"><span class="pre">Backend</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.backend.Backend.H_p"><code class="docutils literal notranslate"><span class="pre">Backend.H_p()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.backend.Backend.H_pen"><code class="docutils literal notranslate"><span class="pre">Backend.H_pen()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.backend.Backend.S_x"><code class="docutils literal notranslate"><span class="pre">Backend.S_x()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.backend.Backend.compile"><code class="docutils literal notranslate"><span class="pre">Backend.compile()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.backend.Backend.decoder"><code class="docutils literal notranslate"><span class="pre">Backend.decoder()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.backend.Backend.exec"><code class="docutils literal notranslate"><span class="pre">Backend.exec()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.backend.Backend.unary_penalty"><code class="docutils literal notranslate"><span class="pre">Backend.unary_penalty()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#qhdopt.backend.dwave_backend.DWaveBackend"><code class="docutils literal notranslate"><span class="pre">DWaveBackend</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.dwave_backend.DWaveBackend.calc_h_and_J"><code class="docutils literal notranslate"><span class="pre">DWaveBackend.calc_h_and_J()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.dwave_backend.DWaveBackend.calc_penalty_coefficient_and_chain_strength"><code class="docutils literal notranslate"><span class="pre">DWaveBackend.calc_penalty_coefficient_and_chain_strength()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.dwave_backend.DWaveBackend.compile"><code class="docutils literal notranslate"><span class="pre">DWaveBackend.compile()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#qhdopt.backend.dwave_backend.DWaveBackend.exec"><code class="docutils literal notranslate"><span class="pre">DWaveBackend.exec()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </div>
 </section>
