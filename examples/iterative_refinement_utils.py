@@ -11,7 +11,7 @@ def run_qhd(matrix, vector):
     vector = to_numpy(-1 * vector).squeeze()
     model = QHD.QP(matrix, vector, bounds=(-1, 1))
     model.dwave_setup(20, api_key_from_file='/Users/samuelkushnir/Documents/dwave_api_key.txt', embedding_scheme="hamming")
-    response = model.optimize(verbose=0, fine_tune=False)
+    response = model.optimize(verbose=0, refine=False)
     return response.minimizer
 
 

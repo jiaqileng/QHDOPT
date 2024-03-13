@@ -91,7 +91,7 @@ class IonQBackend(Backend):
                     theta = np.angle(amplitudes[k])
                     circ.rz(i * n + k, theta)
 
-    def exec(self, verbose, info, compile_only=False):
+    def compile(self, info):
         if self.embedding_scheme != "onehot":
             raise Exception("IonQ backend must use one-hot embedding.")
 
@@ -101,8 +101,7 @@ class IonQBackend(Backend):
         Ht = lambda t: phi1(t) * self.H_k() + phi2(t) * self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict)
         self.qs.add_td_evolution(Ht, np.linspace(0, 1, self.time_discretization))
 
-        iqp = IonQProvider(self.api_key)
-        self.prvd = iqp
+        self.iqp = IonQProvider(self.api_key)
 
         num_sites = self.qs.num_sites
         state_prep = IonQAPICircuit(num_sites)
@@ -111,7 +110,7 @@ class IonQBackend(Backend):
         )
 
         start_compile_time = time.time()
-        iqp.compile(
+        self.iqp.compile(
             self.qs,
             backend="aria-1",
             trotter_num=1,
@@ -121,14 +120,14 @@ class IonQBackend(Backend):
         )
         end_compile_time = time.time()
         info["compile_time"] = end_compile_time - start_compile_time
+
+    def exec(self, verbose, info):
         if verbose > 1:
             self.print_compilation_info()
-        if compile_only:
-            return
 
         start_backend_time = time.time()
-        iqp.run(shots=self.shots, on_simulator=self.on_simulator, with_noise=self.with_noise)
-        self.raw_result = iqp.results(wait=1)
+        self.iqp.run(shots=self.shots, on_simulator=self.on_simulator, with_noise=self.with_noise)
+        self.raw_result = self.iqp.results(wait=1)
         raw_samples = []
         for k in self.raw_result:
             occ = int(self.raw_result[k] * self.shots)
@@ -144,6 +143,6 @@ class IonQBackend(Backend):
         print("Hamiltonian evolution:")
         print(self.qs)
         print("Compiled circuit:")
-        print(self.prvd.print_circuit())
+        print(self.iqp.print_circuit())
         print(f"Number of shots: {self.shots}")
 

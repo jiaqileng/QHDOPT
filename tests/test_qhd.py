@@ -38,8 +38,7 @@ def compare_h_j(h_j_1, h_j_2):
 def calc_h_J(dim, embedding_scheme="hamming"):
     Q, b = get_Q_b(dim)
     model = QHD.QP(Q, b)
-    model.dwave_setup(10, api_key="", embedding_scheme=embedding_scheme, penalty_coefficient=3e-2,
-                      chain_strength=0)
+    model.dwave_setup(10, api_key="", embedding_scheme=embedding_scheme, penalty_coefficient=3e-2)
     return calc_h_and_J(model)
 
 

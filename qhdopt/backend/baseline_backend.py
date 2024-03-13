@@ -17,6 +17,9 @@ class BaselineBackend(Backend):
         super().__init__(10, dimension, shots, "onehot", univariate_dict,
                          bivariate_dict)
 
+    def compile(self, info):
+        raise NotImplementedError("no compilation for baseline_backend.")
+
     def exec(self, verbose: int, info: dict, compile_only: bool = False):
         """
         Executing the BaselineBackend which is essentially just returning
