@@ -12,8 +12,8 @@ setup(
     description="A software package for nonconvex optimization with quantum devices.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_namespace_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_namespace_packages(where="."),
+    package_dir={"": "."},
     install_requires=[
         "jax[cpu]",
         "sympy",
