@@ -166,3 +166,6 @@ cython_debug/
 
 # Debug .ipynb notebook
 ykcao*.ipynb
+
+# API keys
+api_key.txt

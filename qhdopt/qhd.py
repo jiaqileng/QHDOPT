@@ -460,11 +460,6 @@ class QHD:
         if verbose > 0:
             qhd_response.print_time_info()
             qhd_response.print_solver_info()
-
-            if self.qhd_base.backend.embedding_scheme == "unary":
-                print("Percentage of samples inside the unary embedding subspace: {:.2%}\n".format(
-                    qhd_response.get_percentage_in_embedding_subspace()))
-
             if isinstance(self.qhd_base.backend, dwave_backend.DWaveBackend):
                 self.qhd_base.backend.print_quadratization_info()
 
