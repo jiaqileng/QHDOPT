@@ -13,7 +13,14 @@ class Backend(ABC):
     Abstract backend class which defines common functions for all backends and
     an abstract function: exec which each backend needs to implement.
     """
-    def __init__(self, resolution, dimension, shots, embedding_scheme, univariate_dict, bivariate_dict):
+    def __init__(self, 
+                 resolution, 
+                 dimension, 
+                 shots, 
+                 embedding_scheme, 
+                 univariate_dict, 
+                 bivariate_dict,
+                 trivariate_dict):
         self.resolution = resolution
         self.dimension = dimension
         self.qs = QSystem()
@@ -24,6 +31,7 @@ class Backend(ABC):
         self.embedding_scheme = embedding_scheme
         self.univariate_dict = univariate_dict
         self.bivariate_dict = bivariate_dict
+        self.trivariate_dict = trivariate_dict
 
     def S_x(self, qubits: List[Qubit]) -> TIHamiltonian:
         """
@@ -73,11 +81,25 @@ class Backend(ABC):
                 [self.unary_penalty(p, qubits) for p in range(self.dimension)]
             )
 
-    def H_p(self, qubits: List[Qubit], univariate_dict: dict, bivariate_dict: dict) -> TIHamiltonian:
+    def H_p(self, qubits: List[Qubit], univariate_dict: dict, bivariate_dict: dict, trivariate_dict: dict) -> TIHamiltonian:
+        """Generate the problem hamiltonian.
+
+        Args:
+            qubits: List of qubits
+            univariate_dict: Dictionary of univariate terms
+            bivariate_dict: Dictionary of bivariate terms
+            trivariate_dict: Dictionary of trivariate terms
+
+        Returns:
+            TIHamiltonian: Problem Hamiltonian
         """
-        Generates the problem hamiltonian, as defined in https://arxiv.org/pdf/2303.01471.pdf (F.24)
-        for the hamming embedding, and modified for the unary and one-hot embedding in ways that can
-        be found in https://arxiv.org/pdf/2401.08550.pdf.
+        return self.H_p_univariate_bivariate(qubits, univariate_dict, bivariate_dict) + \
+            self.H_p_trivariate(qubits, trivariate_dict)
+
+    def H_p_univariate_bivariate(self, qubits: List[Qubit], univariate_dict: dict, bivariate_dict: dict) -> TIHamiltonian:
+        """Part of the problem Hamiltonian arising from the univariate and bivariate terms, as defined 
+        in https://arxiv.org/pdf/2303.01471.pdf (F.24) for the hamming embedding, and modified for the 
+        unary and one-hot embedding in ways that can be found in https://arxiv.org/pdf/2401.08550.pdf.
 
         Args:
             qubits: List of qubits
@@ -85,7 +107,7 @@ class Backend(ABC):
             bivariate_dict: Dictionary of bivariate terms
 
         Returns:
-            TIHamiltonian: Problem Hamiltonian
+            TIHamiltonian
         """
         # Encoding of the X operator as defined in https://browse.arxiv.org/pdf/2303.01471.pdf (F.16)
         def Enc_X(k):
@@ -146,6 +168,70 @@ class Backend(ABC):
                     H += coefficient * (get_ham(d1, lmda1) * get_ham(d2, lmda2))
 
         return H
+
+    def H_p_trivariate(self, qubits: List[Qubit], trivariate_dict: dict) -> TIHamiltonian:
+        """Part of the problem Hamiltonian arising from the trivariate terms.
+        If `trivariate_dict` is empty, return 0.
+
+        Args:
+            qubits: List of qubits
+            trivariate_dict: Dictionary of trivariate terms
+
+        Returns:
+            TIHamiltonian
+        """
+        if len(trivariate_dict) == 0:
+            return 0
+
+        if self.embedding_scheme != "unary":
+            raise Exception("Only unary embedding is supported at this moment to deal with trivariate terms.")
+
+        def get_ham(d, lmda):
+            def n_j(d, j):
+                return 0.5 * (
+                        qubits[(d - 1) * self.resolution + j].I - qubits[
+                    (d - 1) * self.resolution + j].Z
+                )
+
+            def eval_lmda_unary():
+                eval_points = [i / self.resolution for i in range(self.resolution + 1)]
+                return [lmda(x) for x in eval_points]
+
+            eval_lmda = eval_lmda_unary()
+            H = eval_lmda[0] * qubits[(d - 1) * self.resolution].I
+            for i in range(len(eval_lmda) - 1):
+                H += (eval_lmda[i + 1] - eval_lmda[i]) * n_j(d, self.resolution - i - 1)
+
+            return H
+
+        H: TIHamiltonian = 0
+
+        for key, value in trivariate_dict.items():
+            d1, d2, d3 = key
+            for term in value:
+                coefficient, lmda1, lmda2, lmda3 = term
+                H += coefficient * (get_ham(d1, lmda1) * get_ham(d2, lmda2) * get_ham(d3, lmda3))
+
+        return H
+
+    @property
+    def H_p_max_strength(self):
+        """The largest coefficient (in absolute value) among all terms of the problem Hamiltonian
+        """
+        if hasattr(self, "_H_p_max_strength"):
+            return self._H_p_max_strength
+
+        qs = QSystem()
+        qubits = [Qubit(qs) for _ in range(len(self.qubits))]
+        qs.add_evolution(self.H_p(qubits, self.univariate_dict, self.bivariate_dict, self.trivariate_dict), 1)
+
+        all_coeff = []
+        for prod, c in qs.evos[0][0].ham:
+            if 'Z' in list(prod.values()):
+                all_coeff.append(c)
+        self._H_p_max_strength = np.max(np.abs(all_coeff))
+
+        return self._H_p_max_strength
 
     def decoder(self, raw_samples: List[int], f_eval: Callable) -> Tuple[ndarray, int, List[ndarray]]:
         """

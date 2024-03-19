@@ -2,7 +2,14 @@ import time
 import warnings
 from typing import List, Tuple, Union, Optional, Callable
 
-import cyipopt
+try:
+    import cyipopt
+except ImportError:
+    warnings.warn("cyipopt not found: post-processing using IPOPT will not work.")
+    CYIPOPT_IMPORTED = False
+else:
+    CYIPOPT_IMPORTED = True
+
 import jax.numpy as jnp
 import numpy as np
 import sympy
@@ -106,6 +113,8 @@ class QHD:
             penalty_ratio: float = 0.75,
             chain_strength_ratio: float = 1.05,
             post_processing_method: str = "TNC",
+            quad_scheme: Optional[str] = None,
+            quad_penalty_ratio: Optional[float] = None
     ):
         """
         Configures the settings for quantum optimization using D-Wave systems.
@@ -121,6 +130,8 @@ class QHD:
             penalty_ratio: Ratio used to calculate penalty coefficients.
             post_processing_method: Classical optimization method used after quantum sampling.
             chain_strength_ratio: Ratio of strength of chains in embedding.
+            quad_scheme: Method of quadratization; can be "sub", "min_sel", or None.
+            quad_penalty_ratio: Ratio used to calculate penalty coefficients for quadratization.
         """
         func, syms = self.generate_affined_func()
         self.qhd_base = QHD_Base(func, syms, self.info)
@@ -134,6 +145,8 @@ class QHD:
             penalty_coefficient=penalty_coefficient,
             penalty_ratio=penalty_ratio,
             chain_strength_ratio=chain_strength_ratio,
+            quad_scheme=quad_scheme,
+            quad_penalty_ratio=quad_penalty_ratio
         )
         self.shots = shots
         self.post_processing_method = post_processing_method
@@ -447,6 +460,14 @@ class QHD:
         if verbose > 0:
             qhd_response.print_time_info()
             qhd_response.print_solver_info()
+
+            if self.qhd_base.backend.embedding_scheme == "unary":
+                print("Percentage of samples inside the unary embedding subspace: {:.2%}\n".format(
+                    qhd_response.get_percentage_in_embedding_subspace()))
+
+            if isinstance(self.qhd_base.backend, dwave_backend.DWaveBackend):
+                self.qhd_base.backend.print_quadratization_info()
+
         self.response = qhd_response
 
         return qhd_response

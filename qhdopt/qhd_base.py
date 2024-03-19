@@ -33,7 +33,7 @@ class QHD_Base:
         self.func = func
         self.syms = syms
         self.dimension = len(syms)
-        self.univariate_dict, self.bivariate_dict = decompose_function(self.func, self.syms)
+        self.univariate_dict, self.bivariate_dict, self.trivariate_dict = decompose_function(self.func, self.syms)
         lambda_numpy = lambdify(syms, func, jnp)
         self.f_eval = lambda x: lambda_numpy(*x)
         self.info = info
@@ -49,6 +49,8 @@ class QHD_Base:
         penalty_coefficient: float = 0,
         penalty_ratio: float = 0.75,
         chain_strength_ratio: float = 1.05,
+        quad_scheme: Optional[str] = None,
+        quad_penalty_ratio: Optional[float] = None
     ) -> None:
         """
         Sets up the D-Wave backend for quantum optimization.
@@ -63,12 +65,15 @@ class QHD_Base:
             penalty_coefficient: Coefficient for penalty terms.
             penalty_ratio: Ratio of penalty terms in the objective function.
             chain_strength_ratio: Ratio of strength of chains in embedding.
+            quad_scheme: Method of quadratization; can be "sub", "min_sel", or None.
+            quad_penalty_ratio: Ratio used to calculate penalty coefficients for quadratization.
         """
         self.backend = dwave_backend.DWaveBackend(
             resolution=resolution,
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
             bivariate_dict=self.bivariate_dict,
+            trivariate_dict=self.trivariate_dict,
             shots=shots,
             api_key=api_key,
             api_key_from_file=api_key_from_file,
@@ -76,7 +81,9 @@ class QHD_Base:
             anneal_schedule=anneal_schedule,
             penalty_coefficient=penalty_coefficient,
             penalty_ratio=penalty_ratio,
-            chain_strength_ratio=chain_strength_ratio
+            chain_strength_ratio=chain_strength_ratio,
+            quad_scheme=quad_scheme,
+            quad_penalty_ratio=quad_penalty_ratio
         )
 
     def ionq_setup(
@@ -110,6 +117,7 @@ class QHD_Base:
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
             bivariate_dict=self.bivariate_dict,
+            trivariate_dict=self.trivariate_dict,
             shots=shots,
             api_key=api_key,
             api_key_from_file=api_key_from_file,
@@ -145,6 +153,7 @@ class QHD_Base:
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
             bivariate_dict=self.bivariate_dict,
+            trivariate_dict=self.trivariate_dict,
             shots=shots,
             embedding_scheme=embedding_scheme,
             penalty_coefficient=penalty_coefficient,
@@ -166,6 +175,7 @@ class QHD_Base:
             dimension=self.dimension,
             univariate_dict=self.univariate_dict,
             bivariate_dict=self.bivariate_dict,
+            trivariate_dict=self.trivariate_dict,
             shots=shots,
         )
 

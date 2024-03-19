@@ -13,9 +13,10 @@ class BaselineBackend(Backend):
                  dimension,
                  univariate_dict,
                  bivariate_dict,
+                 trivariate_dict,
                  shots, ):
         super().__init__(10, dimension, shots, "onehot", univariate_dict,
-                         bivariate_dict)
+                         bivariate_dict, trivariate_dict)
 
     def compile(self, info):
         raise NotImplementedError("no compilation for baseline_backend.")

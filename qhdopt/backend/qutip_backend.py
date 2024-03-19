@@ -16,6 +16,7 @@ class QuTiPBackend(Backend):
                  dimension,
                  univariate_dict,
                  bivariate_dict,
+                 trivariate_dict,
                  shots=100,
                  embedding_scheme="onehot",
                  penalty_coefficient=0,
@@ -23,7 +24,9 @@ class QuTiPBackend(Backend):
                  nsteps=10000,
                  gamma=5, ):
         super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
-                         bivariate_dict)
+                         bivariate_dict, trivariate_dict)
+        if len(trivariate_dict) > 0:
+            raise NotImplementedError("qutip backend does not support trivariate terms for now")
         self.penalty_coefficient = penalty_coefficient
         self.time_discretization = time_discretization
         self.gamma = gamma

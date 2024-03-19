@@ -21,7 +21,7 @@ def decompose_function(func, syms):
     func_expanded = expand(func)
 
     # Containers for different parts
-    univariate_terms, bivariate_terms = {}, {}
+    univariate_terms, bivariate_terms, trivariate_terms = {}, {}, {}
 
     # Iterate over the terms in the expanded form
     for term in func_expanded.as_ordered_terms():
@@ -55,7 +55,31 @@ def decompose_function(func, syms):
                     lambdify_numpy(list(f2.free_symbols), f2),
                 )
             )
-        elif len(vars_in_term) > 2:
+        elif len(vars_in_term) == 3:
+            index1, index2, index3 = sorted(
+                [symbol_to_int[sym] for sym in list(vars_in_term)]
+            )
+
+            factors = term.as_ordered_factors()
+            coefficient = 1
+            i = 0
+            while len(factors[i].free_symbols) == 0:
+                coefficient *= float(N(factors[i]))
+                i += 1
+
+            f1, f2, f3 = sorted(
+                [factors[i] for i in range(i, len(factors))],
+                key=lambda factor: symbol_to_int[list(factor.free_symbols)[0]],
+            )
+            trivariate_terms.setdefault((index1, index2, index3), []).append(
+                (
+                    coefficient,
+                    lambdify_numpy(list(f1.free_symbols), f1),
+                    lambdify_numpy(list(f2.free_symbols), f2),
+                    lambdify_numpy(list(f3.free_symbols), f3),
+                )
+            )
+        elif len(vars_in_term) > 3:
             raise Exception(
                 f"The specified function has {len(vars_in_term)} variable term "
                 f"which is currently unsupported by QHD."
@@ -67,7 +91,7 @@ def decompose_function(func, syms):
         for var, terms in univariate_terms.items()
     }
 
-    return univariate_part, bivariate_terms
+    return univariate_part, bivariate_terms, trivariate_terms
 
 def quad_to_gen(Q, b):
     x = symbols(f"x:{len(Q)}")

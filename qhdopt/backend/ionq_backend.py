@@ -15,6 +15,7 @@ class IonQBackend(Backend):
                  dimension,
                  univariate_dict,
                  bivariate_dict,
+                 trivariate_dict,
                  shots=100,
                  api_key=None,
                  api_key_from_file=None,
@@ -26,7 +27,9 @@ class IonQBackend(Backend):
                  with_noise=False,
                  ):
         super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
-                         bivariate_dict)
+                         bivariate_dict, trivariate_dict)
+        if len(trivariate_dict) > 0:
+            raise NotImplementedError("ionq backend does not support trivariate terms for now")
         self.api_key = api_key
         if api_key_from_file is not None:
             with open(api_key_from_file, "r") as f:
