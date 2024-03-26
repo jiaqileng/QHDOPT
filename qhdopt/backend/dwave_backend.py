@@ -103,9 +103,7 @@ class DWaveBackend(Backend):
             raw_samples: A list of raw samples from the Dwave backend.
         """
         self.compile(info)
-
-        if verbose > 1:
-            self.print_compilation_info()
+        self.print_compilation_info(verbose)
 
         if verbose > 1:
             print("Submit Task to D-Wave:")
@@ -174,15 +172,17 @@ class DWaveBackend(Backend):
         dwp = DWaveProvider(self.api_key)
         return dwp.compile(self.qs, self.anneal_schedule, chain_strength)
 
-    def print_compilation_info(self):
-        print("* Compilation information")
-        print("Final Hamiltonian:")
-        print("(Feature under development; only the Hamiltonian is meaningful here)")
-        print(self.qs)
-        print(f"Annealing schedule parameter: {self.anneal_schedule}")
-        print(f"Penalty coefficient: {self.penalty_coefficient}")
-        print(f"Chain strength: {self.chain_strength}")
-        print(f"Number of shots: {self.shots}")
+    def print_compilation_info(self, verbose: int):
+        if verbose > 1:
+            print("* Compilation information")
+            if verbose > 2:
+                print("Final Hamiltonian:")
+                print("(Feature under development; only the Hamiltonian is meaningful here)")
+                print(self.qs)
+            print(f"Annealing schedule parameter: {self.anneal_schedule}")
+            print(f"Penalty coefficient: {self.penalty_coefficient}")
+            print(f"Chain strength: {self.chain_strength}")
+            print(f"Number of shots: {self.shots}")
 
     def print_quadratization_info(self):
         if self.raw_samples is None:
