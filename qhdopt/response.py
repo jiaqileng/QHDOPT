@@ -1,6 +1,3 @@
-from qhdopt.utils.benchmark_utils import calc_success_prob
-
-
 class Response:
     def __init__(self, info,
                  coarse_samples=None, coarse_minimum=None, coarse_minimizer=None,
@@ -21,12 +18,15 @@ class Response:
         number_in_subspace = sum([0 if el is None else 1 for el in self.samples])
         return number_in_subspace / len(self.samples)
 
-    def get_success_probability(self, tol=1e-3):
+    def get_success_probability(self, tol=1e-3, minimum=None):
         if self.func == None:
             raise Exception("No function to evaluate the samples.")
+
+        if minimum is None:
+            minimum = self.minimum
         successes = 0
         for sample in self.samples:
-            if sample is not None and abs(self.func(sample) - self.minimum) < tol:
+            if sample is not None and abs(self.func(sample) - minimum) < tol:
                 successes +=1
         return successes / len(self.samples)
 
@@ -53,9 +53,9 @@ class Response:
         print(f"SimuQ compilation: {self.info['compile_time']:.3f} s")
         print(f"Backend runtime: {self.info['backend_time']:.3f} s")
         print(f"Decoding time: {self.info['decoding_time']:.3f} s")
-        if self.info["fine_tune_status"]:
-            print(f"Classical (Fine-tuning) time: {self.info['fine_tuning_time']:.3f} s")
-            total_runtime += self.info['fine_tuning_time']
+        if self.info["refine_status"]:
+            print(f"Classical (Fine-tuning) time: {self.info['refining_time']:.3f} s")
+            total_runtime += self.info['refining_time']
 
         print(f"* Total time: {total_runtime:.3f} s")
         print()

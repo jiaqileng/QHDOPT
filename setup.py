@@ -3,7 +3,7 @@ from setuptools import find_namespace_packages, setup
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-with open("src/qhdopt/_version.py") as f:
+with open("qhdopt/_version.py") as f:
     version = f.readlines()[-1].split()[-1].strip("\"'")
 
 setup(
@@ -12,8 +12,8 @@ setup(
     description="A software package for nonconvex optimization with quantum devices.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_namespace_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_namespace_packages(where="."),
+    package_dir={"": "."},
     install_requires=[
         "jax[cpu]",
         "sympy",
