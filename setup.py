@@ -15,12 +15,12 @@ setup(
     packages=find_namespace_packages(where="."),
     package_dir={"": "."},
     install_requires=[
+        "simuq[dwave, ionq, qutip]>=0.3.1",
         "jax[cpu]",
         "sympy",
         "scipy>=1.10.1,<1.12",
         "numpy",
         "jaxlib",
-        "qutip"
     ],
     extras_require={
         "dev": ["tox"],
