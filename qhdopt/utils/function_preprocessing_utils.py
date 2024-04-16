@@ -44,10 +44,21 @@ def decompose_function(func, syms):
                 coefficient *= float(N(factors[i]))
                 i += 1
 
-            f1, f2 = sorted(
+            reordered_factors = sorted(
                 [factors[i] for i in range(i, len(factors))],
                 key=lambda factor: symbol_to_int[list(factor.free_symbols)[0]],
             )
+
+            symbol_labels = []
+            f = [1, 1]
+            for factor in reordered_factors :
+                syms = list(factor.free_symbols)
+                if len(syms) > 1 :
+                    raise Exception(f"Found undecomposable term: {factor}")
+                f[symbol_to_int[syms[0]] - 1] *= factor
+                
+            f1, f2 = f
+            
             bivariate_terms.setdefault((index1, index2), []).append(
                 (
                     coefficient,
