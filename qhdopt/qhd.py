@@ -106,6 +106,7 @@ class QHD:
             penalty_ratio: float = 0.75,
             chain_strength_ratio: float = 1.05,
             post_processing_method: str = "TNC",
+            max_post_processing_num: int = None,
     ):
         """
         Configures the settings for quantum optimization using D-Wave systems.
@@ -137,6 +138,7 @@ class QHD:
         )
         self.shots = shots
         self.post_processing_method = post_processing_method
+        self.max_post_processing_num = max_post_processing_num
 
     def ionq_setup(
             self,
@@ -149,6 +151,7 @@ class QHD:
             time_discretization: int = 10,
             gamma: float = 5,
             post_processing_method: str = "TNC",
+            max_post_processing_num: int = None,
             on_simulator: bool = False,
     ):
         """
@@ -181,6 +184,7 @@ class QHD:
         )
         self.shots = shots
         self.post_processing_method = post_processing_method
+        self.max_post_processing_num = max_post_processing_num
 
     def qutip_setup(
             self,
@@ -191,6 +195,7 @@ class QHD:
             time_discretization: int = 10,
             gamma: float = 5,
             post_processing_method: str = "TNC",
+            max_post_processing_num: int = None,
     ):
         """
         Configures the settings for quantum simulation of QHD using QuTiP.
@@ -216,6 +221,7 @@ class QHD:
         )
         self.shots = shots
         self.post_processing_method = post_processing_method
+        self.max_post_processing_num = max_post_processing_num
 
     def baseline_setup(
             self,
@@ -400,6 +406,8 @@ class QHD:
         if self.decoded_samples is None:
             raise Exception("No results on record.")
         samples = self.decoded_samples
+        if self.max_post_processing_num is not None and self.max_post_processing_num < len(samples):
+            samples = samples[:self.max_post_processing_num]
         solver = self.post_processing_method
 
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
