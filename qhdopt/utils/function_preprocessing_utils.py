@@ -51,13 +51,16 @@ def decompose_function(func, syms):
 
             symbol_labels = []
             f = [1, 1]
+            sym0id = list(reordered_factors[0].free_symbols)[0]
             for factor in reordered_factors :
                 syms = list(factor.free_symbols)
                 if len(syms) > 1 :
                     raise Exception(f"Found undecomposable term: {factor}")
-                f[symbol_to_int[syms[0]] - 1] *= factor
+                ind = 0 if syms[0] == sym0id else 1
+                f[ind] *= factor
                 
             f1, f2 = f
+            print(f1, f2)
             
             bivariate_terms.setdefault((index1, index2), []).append(
                 (
