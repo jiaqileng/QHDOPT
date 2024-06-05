@@ -21,7 +21,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install -e .
-        cd tests/
+#        cd tests/
         pip install flake8 pytest pytest-cov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
