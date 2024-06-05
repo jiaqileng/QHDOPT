@@ -22,7 +22,8 @@ setup(
         "jaxlib",
         "qutip",
         "simuq",
-        "dwave-system"
+        "dwave-system",
+        "qiskit"
     ],
     extras_require={
         "dev": ["tox"],
