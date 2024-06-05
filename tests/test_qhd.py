@@ -34,6 +34,26 @@ def compare_h_j(h_j_1, h_j_2):
         assert abs(h1[i] - h2[i]) < tol
     assert compare_qubo(j1, j2) == 0
 
+def isingToqubo(h, J):
+    n = len(h)
+    QUBO = {}
+
+    for i in range(n):
+        s = 0
+        for ii in range(n):
+            if (i,ii) in J.keys():
+                s += J[(i,ii)]
+            if (ii,i) in J.keys():
+                s += J[(ii,i)]
+
+        QUBO[(i,i)] = -2 * (h[i] + s)
+
+        for j in range(i+1, n):
+            if (i,j) in J.keys() and J[i, j] != 0:
+                QUBO[(i,j)] = 4 * J[(i,j)]
+
+    return QUBO
+
 
 def calc_h_J(dim, embedding_scheme="hamming"):
     Q, b = get_Q_b(dim)
@@ -53,7 +73,7 @@ def qhd_qp_for_dimension(dim):
     with open(f"./resources/{dim}d_qubo.npy", 'rb') as f:
         qubo = np.load(f, allow_pickle=True).item()
     h, J = calc_h_J(dim)
-    qubo_from_h_j = DWaveProvider.isingToqubo(h, J)
+    qubo_from_h_j = isingToqubo(h, J)
     qubo_from_h_j = {convert_key(key): val for key, val in qubo_from_h_j.items()}
     assert compare_qubo(qubo, qubo_from_h_j) == 0
 
