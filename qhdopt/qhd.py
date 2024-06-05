@@ -1,8 +1,6 @@
 import time
 import warnings
 from typing import List, Tuple, Union, Optional, Callable
-
-import cyipopt
 import jax.numpy as jnp
 import numpy as np
 import sympy
@@ -368,6 +366,7 @@ class QHD:
                     options={"gtol": 1e-6, "eps": 1e-9},
                 )
             elif solver == "IPOPT":
+                import cyipopt
                 result = cyipopt.minimize_ipopt(
                     f_eval_jit,
                     x0,
