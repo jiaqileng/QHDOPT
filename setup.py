@@ -21,7 +21,8 @@ setup(
         "numpy",
         "jaxlib",
         "qutip",
-        "simuq"
+        "simuq",
+        "dwave"
     ],
     extras_require={
         "dev": ["tox"],
