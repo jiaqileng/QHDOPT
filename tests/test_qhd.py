@@ -13,14 +13,14 @@ def convert_key(tup: Tuple) -> str:
 
 
 def get_benchmark_h_J(dim):
-    with open(f"resources/{dim}d_unary.npy", 'rb') as f:
+    with open(f"./resources/{dim}d_unary.npy", 'rb') as f:
         h = list(np.load(f, allow_pickle=True))
         J = np.load(f, allow_pickle=True).item()
     return h, J
 
 
 def get_Q_b(dim):
-    with open(f"resources/{dim}d_instance.npy", 'rb') as f:
+    with open(f"./resources/{dim}d_instance.npy", 'rb') as f:
         Q = np.load(f)
         b = np.load(f)
     return Q, b
@@ -43,7 +43,7 @@ def calc_h_J(dim, embedding_scheme="hamming"):
 
 
 def qhd_qp_for_dimension(dim):
-    with open(f"resources/{dim}d_qubo.npy", 'rb') as f:
+    with open(f"./resources/{dim}d_qubo.npy", 'rb') as f:
         qubo = np.load(f, allow_pickle=True).item()
     h, J = calc_h_J(dim)
     qubo_from_h_j = DWaveProvider.isingToqubo(h, J)
