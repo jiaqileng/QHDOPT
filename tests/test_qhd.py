@@ -20,7 +20,7 @@ def get_benchmark_h_J(dim):
 
 
 def get_Q_b(dim):
-    with open(f"../examples/resources/{dim}d_instance.npy", 'rb') as f:
+    with open(f"resources/{dim}d_instance.npy", 'rb') as f:
         Q = np.load(f)
         b = np.load(f)
     return Q, b
