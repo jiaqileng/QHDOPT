@@ -41,6 +41,13 @@ def calc_h_J(dim, embedding_scheme="hamming"):
     model.dwave_setup(10, api_key="", embedding_scheme=embedding_scheme, penalty_coefficient=3e-2)
     return calc_h_and_J(model)
 
+def compare_qubo(q1, q2):
+    numDifferent = 0
+    if len(q1.keys()) != len(q2.keys()): return False
+    for key in q1.keys():
+        if abs(q1[key] - q2[key]) > 10**-3:
+            numDifferent += 1
+    return numDifferent
 
 def qhd_qp_for_dimension(dim):
     with open(f"./resources/{dim}d_qubo.npy", 'rb') as f:
@@ -48,7 +55,7 @@ def qhd_qp_for_dimension(dim):
     h, J = calc_h_J(dim)
     qubo_from_h_j = DWaveProvider.isingToqubo(h, J)
     qubo_from_h_j = {convert_key(key): val for key, val in qubo_from_h_j.items()}
-    assert DWaveProvider.compare_qubo(qubo, qubo_from_h_j) == 0
+    assert compare_qubo(qubo, qubo_from_h_j) == 0
 
 
 def test_qhd_qp_hamming():
