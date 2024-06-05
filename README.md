@@ -1,7 +1,7 @@
 # QHDOPT
 
 [![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](https://unitary.fund)
-[![Python CI](https://github.com/jiaqileng/QHDOPT/actions/workflows/python-ci.yml/badge.svg)](https://github.com/jiaqileng/QHDOPT/actions/workflows/python-ci.yml)
+[![Python CI](https://github.com/jiaqileng/QHDOPT/actions/workflows/python-ci.yml/badge.svg)](https://github.com/jiaqileng/QHDOPT/actions/workflows/python-ci.yml)<br>
 **QHDOPT** (QHD-based OPTimizer) is a software package for nonconvex optimization.
 
 QHDOPT implements a quantum optimization algorithm named [Quantum Hamiltonian Descent](https://jiaqileng.github.io/quantum-hamiltonian-descent/) (QHD) on available quantum computers (such as the [D-Wave systems](https://www.dwavesys.com/)). QHD is a quantum-upgraded version of gradient descent (GD). Unlike the classical GD, QHD demonstrates a significant advantage in solving nonconvex optimization problems.
