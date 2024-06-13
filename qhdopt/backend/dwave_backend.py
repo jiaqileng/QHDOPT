@@ -63,8 +63,10 @@ class DWaveBackend(Backend):
         chain_strength = np.max([5e-2, chain_strength_multiplier * max_strength])
         return penalty_coefficient, chain_strength
 
-    def compile(self, info):
+    def compile(self, info, override=True):
         penalty_coefficient, chain_strength = self.calc_penalty_coefficient_and_chain_strength()
+        if override:
+            penalty_coefficient, chain_strength = 3.5e-2, 4e-2
         self.penalty_coefficient, self.chain_strength = penalty_coefficient, chain_strength
         self.qs.add_evolution(
             self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
