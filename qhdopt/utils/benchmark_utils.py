@@ -66,3 +66,15 @@ def run_test(model, tol=1e-3):
     data_vector[11] = tnc_success_prob
 
     return data_vector
+
+def compare_coarse_and_refine(problem_index, model):
+    # Run QHD with post-processor = TNC
+    response = model.optimize(verbose=1)
+    data = []
+    for i in range(len(response.coarse_samples)):
+        if response.coarse_samples[i] is not None:
+            data.append([f'{problem_index}', 'before', model.fun_eval(response.coarse_samples[i]) - response.minimum])
+    for i in range(len(response.refined_samples)):
+        if response.refined_samples[i] is not None:
+            data.append([f'{problem_index}', 'after', model.fun_eval(response.refined_samples[i] - response.minimum)])
+    return data

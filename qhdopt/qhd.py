@@ -9,7 +9,7 @@ from scipy.optimize import Bounds, minimize
 from sympy import lambdify
 from sympy.core.function import Function
 from sympy.core.symbol import Symbol
-import cyipopt
+# import cyipopt
 from qhdopt.backend.backend import Backend
 from qhdopt.qhd_base import QHD_Base
 from qhdopt.backend import dwave_backend
