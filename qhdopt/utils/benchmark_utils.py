@@ -81,7 +81,14 @@ def compare_coarse_and_refine(problem_index, model):
         if response.refined_samples[i] is not None:
             fval = model.fun_eval(response.refined_samples[i]) - response.minimum
             data_after.append(np.float64(fval))
-    return [data_before, data_after]
+
+    # Generate random init guesses
+    data_rand_init = []
+    for i in range(1000):
+        fval = model.fun_eval(np.random.rand(50)) - response.minimum
+        data_rand_init.append(np.float64(fval))
+
+    return [data_rand_init, data_before, data_after]
 
 def make_violin_plot(plot_data, savefig=False):
     fig, axes = plt.subplots(2, 5, figsize=(15, 5), sharex=True, sharey=True)
@@ -92,16 +99,21 @@ def make_violin_plot(plot_data, savefig=False):
             violin_parts = ax.violinplot(plot_data[5*r+c], showmeans=True)
             ax.set_title(f"instance {5*r+c+1}")
             ax.set_yscale('log')
-            ax.set_xticks([1,2])
-            ax.set_xticklabels(['before', 'after'])
+            ax.set_xticks([1,2,3])
+            ax.set_xticklabels(['rand. init.', 'quantum', 'refined'])
 
-            vp1, vp2 = violin_parts['bodies']
+            if c == 0:
+                ax.set_ylabel('Obj. Value')
+
+            vp1, vp2, vp3 = violin_parts['bodies']
             vp1.set_facecolor('yellowgreen')
             vp1.set_alpha(0.75)
-            vp2.set_facecolor('navy')
-            vp2.set_alpha(0.75)
+            vp2.set_facecolor('royalblue')
+            vp2.set_alpha(0.5)
+            vp3.set_facecolor('navy')
+            vp3.set_alpha(0.75)
     fig.suptitle('Solution Quality: Before & After Refinement')
-    plt.show()
 
     if savefig:
         plt.savefig('compare_coarse_and_refine.png', dpi=300)
+    plt.show()
