@@ -29,26 +29,24 @@ QHDOPT automatically post-processes the results returned by the quantum machines
 
 ## Installation
 
-The dependency of `simuq` now requires you to install a specific version of SimuQ manually. Please install by running the following 
+QHDOPT has a dependency on Ipopt. You may install Ipopt in your conda environment by
 
 ```bash
-git clone https://github.com/PicksPeng/SimuQ.git
-cd SimuQ/
-git checkout qhd-work
-pip install ".[dwave, ionq, qutip]"
+conda install -c conda-forge cyipopt==1.3.0
 ```
 
-To install QHDOPT, you can clone this repo and install by
+To install QHDOPT, you can directly install with `pip` by
+
+```bash
+pip install qhdopt
+```
+
+If you prefer to install from sources, clone this repo and install by
 
 ```bash
 git clone https://github.com/jiaqileng/QHDOPT.git
 cd QHDOPT/
 pip install ".[all]"
-```
-
-Finally, run the following in your conda environment:
-```
-conda install -c conda-forge cyipopt
 ```
 
 ## Usage

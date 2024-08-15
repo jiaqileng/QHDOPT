@@ -21,7 +21,7 @@ setup(
         "numpy<1.28.0",
         "jaxlib",
         "qutip",
-        "simuq",
+        "simuq>=0.3.1",
         "dwave-system",
         "qiskit"
     ],
