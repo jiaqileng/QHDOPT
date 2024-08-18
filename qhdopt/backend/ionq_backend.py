@@ -24,6 +24,7 @@ class IonQBackend(Backend):
                  gamma=5,
                  on_simulator=False,
                  with_noise=False,
+                 compile_only=False,
                  ):
         super().__init__(resolution, dimension, shots, embedding_scheme, univariate_dict,
                          bivariate_dict)
@@ -36,6 +37,7 @@ class IonQBackend(Backend):
         self.gamma = gamma
         self.on_simulator = on_simulator
         self.with_noise = with_noise
+        self.compile_only = compile_only
 
     def ionq_state_prep_one_hot(self, circ, amplitudes):
         def state_prep_one_hot_aux(n, starting_index, amplitudes):
@@ -110,9 +112,12 @@ class IonQBackend(Backend):
         )
 
         start_compile_time = time.time()
+        backend = "aria-1"
+        #if self.compile_only:
+        #    backend = self.qs.num_sites
         self.iqp.compile(
             self.qs,
-            backend="aria-1",
+            backend=backend,
             trotter_num=1,
             state_prep=state_prep,
             verbose=-1,
@@ -146,3 +151,5 @@ class IonQBackend(Backend):
         print(self.iqp.print_circuit())
         print(f"Number of shots: {self.shots}")
 
+    def get_circuit(self):
+        return self.iqp.prog["input"]["circuit"]

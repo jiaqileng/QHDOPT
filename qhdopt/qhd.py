@@ -148,6 +148,7 @@ class QHD:
             gamma: float = 5,
             post_processing_method: str = "TNC",
             on_simulator: bool = False,
+            #compile_only: bool = False,
     ):
         """
         Configures the settings for running QHD using IonQ systems.
@@ -175,7 +176,8 @@ class QHD:
             penalty_coefficient=penalty_coefficient,
             time_discretization=time_discretization,
             gamma=gamma,
-            on_simulator=on_simulator
+            on_simulator=on_simulator,
+            #compile_only=compile_only
         )
         self.shots = shots
         self.post_processing_method = post_processing_method

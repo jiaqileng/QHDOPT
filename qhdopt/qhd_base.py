@@ -90,6 +90,7 @@ class QHD_Base:
         time_discretization: int = 10,
         gamma: float = 5,
         on_simulator: bool = False,
+        #compile_only: bool = False,
     ) -> None:
         """
         Sets up the IonQ backend for quantum optimization.
@@ -118,6 +119,7 @@ class QHD_Base:
             time_discretization=time_discretization,
             on_simulator=on_simulator,
             gamma=gamma,
+            #compile_only=compile_only
         )
 
     def qutip_setup(
