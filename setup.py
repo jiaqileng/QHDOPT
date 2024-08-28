@@ -23,7 +23,8 @@ setup(
         "qutip",
         "simuq>=0.3.1",
         "dwave-system",
-        "qiskit"
+        "qiskit",
+        "matplotlib"
     ],
     extras_require={
         "dev": ["tox"],
