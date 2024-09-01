@@ -20,7 +20,7 @@ setup(
         "scipy>=1.10.1,<1.12",
         "numpy<1.28.0",
         "jaxlib",
-        "qutip",
+        "qutip<5",
         "simuq>=0.3.1",
         "dwave-system",
         "qiskit",
