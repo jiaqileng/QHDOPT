@@ -113,12 +113,13 @@ class IonQBackend(Backend):
 
         start_compile_time = time.time()
         backend = "aria-1"
-        #if self.compile_only:
-        #    backend = self.qs.num_sites
+        if self.compile_only:
+            backend = self.qs.num_sites
         self.iqp.compile(
             self.qs,
             backend=backend,
-            trotter_num=1,
+            aais="heisenberg",
+            trotter_num=6,
             state_prep=state_prep,
             verbose=-1,
             tol=0.1,
