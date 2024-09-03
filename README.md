@@ -3,6 +3,7 @@
 [![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](https://unitary.fund)<br>
 [![Python CI](https://github.com/jiaqileng/QHDOPT/actions/workflows/python-ci.yml/badge.svg)](https://github.com/jiaqileng/QHDOPT/actions/workflows/python-ci.yml)
 [![codecov](https://codecov.io/gh/jiaqileng/QHDOPT/graph/badge.svg?token=Z1GMD2AD8R)](https://codecov.io/gh/jiaqileng/QHDOPT)
+[![Docs](https://img.shields.io/badge/docs-website-blue.svg)](https://jiaqileng.github.io/QHDOPT/)
 <br>
 **QHDOPT** (QHD-based OPTimizer) is a software package for nonconvex optimization.
 

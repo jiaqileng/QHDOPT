@@ -9,7 +9,6 @@ from scipy.optimize import Bounds, minimize
 from sympy import lambdify
 from sympy.core.function import Function
 from sympy.core.symbol import Symbol
-import cyipopt
 from qhdopt.backend.backend import Backend
 from qhdopt.qhd_base import QHD_Base
 from qhdopt.backend import dwave_backend
@@ -372,6 +371,7 @@ class QHD:
                     options={"gtol": 1e-6, "eps": 1e-9},
                 )
             elif solver == "IPOPT":
+                import cyipopt
                 result = cyipopt.minimize_ipopt(
                     f_eval_jit,
                     x0,
