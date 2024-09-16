@@ -9,7 +9,7 @@ def test_backend_performance():
     bt = [3 / 4, -1 / 4]
     sol = -.75
     model = QHD.QP(Q, bt)
-    response = model.classically_optimize(solver="IPOPT", verbose=1)
+    response = model.classically_optimize(solver="TNC", verbose=1)
     assert abs(response.minimum - sol) < 1e-3
 
     model.qutip_setup(resolution=6, time_discretization=40)
