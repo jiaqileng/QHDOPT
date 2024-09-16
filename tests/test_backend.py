@@ -20,5 +20,12 @@ def test_backend_performance():
     ionq_backend = model.compile_only()
     assert len(ionq_backend.qs.evos) == 5
 
+    model.dwave_setup(resolution=2,
+                      api_key='dwave_api_key')
+    dwave_compile = model.compile_only()
+    assert dwave_compile.chain_strength == 0.04
+    assert dwave_compile.penalty_coefficient == 0.035
+    dwave_compile.print_compilation_info()
+
 
 
