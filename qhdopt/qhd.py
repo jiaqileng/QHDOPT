@@ -390,6 +390,7 @@ class QHD:
                 minimizer = result.x
         end_time = time.time()
         post_processing_time = end_time - start_time
+        self.info["sample_times"] = sample_times
 
         return opt_samples, minimizer, current_best, post_processing_time, sample_times
 
@@ -411,7 +412,6 @@ class QHD:
             samples, bounds, solver, self.fun_eval)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
-        self.info["sample_times"] = sample_times
 
         return minimizer, current_best, post_processing_time
 
