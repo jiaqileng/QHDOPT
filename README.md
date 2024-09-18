@@ -52,7 +52,7 @@ pip install ".[all]"
 
 ## Usage
 
-Two example notebooks for a jump start are `examples/QP-example.ipynb` and `examples/PO-example.ipynb`. The following illustrates the basic building blocks of QHDOPT and their functionalities briefly.
+Two example notebooks for a jump start are `examples/1_quadratic_programming.ipynb` and `examples/2_nonlinear_programming.ipynb`. The following illustrates the basic building blocks of QHDOPT and their functionalities briefly.
 
 Import QHDOPT by running
 
@@ -87,22 +87,24 @@ minimum = model.optimize()
 The minimal value of $f$ found by QHDOPT is then stored in `minimum`. To print more details in the process, you can run `model.optimize(verbose=1)`.
 
 ## Contact
-Jiaqi Leng [jiaqil@umd.edu](mailto:jiaqil@umd.edu)
+Jiaqi Leng [jiaqil@terpmail.umd.edu](mailto:jiaqil@terpmail.umd.edu)
 
-Yuxiang Peng [ypeng15@umd.edu](mailto:ypeng15@umd.edu)
+Yuxiang Peng [pickspeng@gmail.com](mailto:pickspeng@gmail.com)
 
 ## Contributors
-Samuel Kushnir, Jiaqi Leng, Yuxiang Peng, Lei Fan
+Samuel Kushnir, Jiaqi Leng, Yuxiang Peng, Lei Fan, Xiaodi Wu
 
 ## Citation
 
 If you use QHDOPT in your work, please cite our paper
 
 ```
-@article{kushnir2024qhdopt,
-  title    = {QHDOPT: A Software for Nonlinear Optimization with Quantum Hamiltonian Decent},
-  author   = {Kushnir, Sam and Leng, Jiaqi and Peng, Yuxiang and Fan, Lei and Wu, Xiaodi},
-  journal  = {arXiv preprint arXiv:xxxx.xxxxx},
-  year     = {2024}
+@misc{kushnir2024qhdopt,
+  author    = {Kushnir, Sam and Leng, Jiaqi and Peng, Yuxiang and Fan, Lei and Wu, Xiaodi},
+  publisher = {{INFORMS Journal on Computing}},
+  title     = {{QHDOPT}: A Software for Nonlinear Optimization with {Q}uantum {H}amiltonian {D}escent},
+  year      = {2024},
+  doi       = {10.1287/ijoc.2024.0587.cd},
+  url       = {https://github.com/jiaqileng/QHDOPT},
 }
 
