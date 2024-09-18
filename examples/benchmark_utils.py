@@ -27,10 +27,10 @@ def calc_h_and_J(qhd):
 
     return qhd.qhd_base.backend.calc_h_and_J()
 
-def run_test(model, tol=1e-3):
+def run_test(model, tol=1e-3, override=None):
     data_vector = np.zeros(16)
     # # Run QHD with post-processor = Ipopt
-    response = model.optimize(verbose=1)
+    response = model.optimize(verbose=1, override=override)
     qhd_ipopt_success_prob = response.get_success_probability()
     data_vector[0] = model.info["average_qpu_time"]
     data_vector[1] = model.info["post_processing_time"] / len(model.info["sample_times"])

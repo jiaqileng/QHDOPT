@@ -63,10 +63,13 @@ class DWaveBackend(Backend):
         chain_strength = np.max([5e-2, chain_strength_multiplier * max_strength])
         return penalty_coefficient, chain_strength
 
-    def compile(self, info, override=True):
+    def compile(self, info, override=None):
         penalty_coefficient, chain_strength = self.calc_penalty_coefficient_and_chain_strength()
-        if override:
-            penalty_coefficient, chain_strength = 3.5e-2, 4e-2
+
+        if override is not None:
+            # penalty_coefficient, chain_strength = 3.5e-2, 4e-2
+            penalty_coefficient, chain_strength = override
+
         self.penalty_coefficient, self.chain_strength = penalty_coefficient, chain_strength
         self.qs.add_evolution(
             self.H_p(self.qubits, self.univariate_dict, self.bivariate_dict) + penalty_coefficient * self.H_pen(self.qubits), 1
@@ -78,7 +81,7 @@ class DWaveBackend(Backend):
         end_compile_time = time.time()
         info["compile_time"] = end_compile_time - start_compile_time
 
-    def exec(self, verbose: int, info: dict, compile_only=False) -> List[List[int]]:
+    def exec(self, verbose: int, info: dict, compile_only=False, override=None) -> List[List[int]]:
         """
         Execute the Dwave quantum backend using the problem description specified in
         self.univariate_dict and self.bivariate_dict. It uses self.H_p to generate
@@ -93,7 +96,7 @@ class DWaveBackend(Backend):
         Returns:
             raw_samples: A list of raw samples from the Dwave backend.
         """
-        self.compile(info)
+        self.compile(info, override)
 
         if verbose > 1:
             self.print_compilation_info()

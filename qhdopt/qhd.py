@@ -418,7 +418,7 @@ class QHD:
     def compile_only(self) -> Backend:
         return self.qhd_base.compile_only()
 
-    def optimize(self, refine: bool = True, verbose: int = 0) -> Response:
+    def optimize(self, refine: bool = True, verbose: int = 0, override=None) -> Response:
         """
         User-facing function to run QHD on the optimization problem
 
@@ -430,7 +430,7 @@ class QHD:
         Returns:
             Response object containing samples, minimum, minimizer, and other info
         """
-        response = self.qhd_base.optimize(verbose)
+        response = self.qhd_base.optimize(verbose, override)
         self.coarse_minimizer, self.coarse_minimum, self.decoded_samples = self.affine_mapping(
             response.minimizer, response.minimum, response.samples)
         self.info["refine_status"] = refine

@@ -175,7 +175,8 @@ class QHD_Base:
 
     def optimize(
             self,
-            verbose: int = 0
+            verbose: int = 0,
+            override=None,
     ) -> Optional[Response]:
         """
         Executes the optimization process.
@@ -186,7 +187,7 @@ class QHD_Base:
         Returns:
             An instance of Response containing optimization results, None if compile_only is True.
         """
-        raw_samples = self.backend.exec(verbose=verbose, info=self.info)
+        raw_samples = self.backend.exec(verbose=verbose, info=self.info, override=override)
 
 
         start_time_decoding = time.time()
