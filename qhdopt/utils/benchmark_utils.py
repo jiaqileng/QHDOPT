@@ -97,10 +97,10 @@ def make_violin_plot(plot_data, savefig=False):
         for c in range(5):
             ax = axes[r, c]
             violin_parts = ax.violinplot(plot_data[5*r+c], showmeans=True)
-            ax.set_title(f"instance {5*r+c+1}")
+            ax.set_title(f"Instance {5*r+c+6}")
             ax.set_yscale('log')
             ax.set_xticks([1,2,3])
-            ax.set_xticklabels(['rand. init.', 'quantum', 'refined'])
+            ax.set_xticklabels(['Rand. init.', 'Quantum', 'Refined'])
 
             if c == 0:
                 ax.set_ylabel('Obj. Value')
