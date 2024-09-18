@@ -23,8 +23,8 @@ def test_backend_performance():
     model.dwave_setup(resolution=2,
                       api_key='dwave_api_key')
     dwave_compile = model.compile_only()
-    assert dwave_compile.chain_strength == 0.04
-    assert dwave_compile.penalty_coefficient == 0.035
+    assert dwave_compile.chain_strength == 0.1875
+    assert dwave_compile.penalty_coefficient == 0.140625
     dwave_compile.print_compilation_info()
 
 

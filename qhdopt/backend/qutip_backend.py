@@ -59,7 +59,7 @@ class QuTiPBackend(Backend):
         end_compile_time = time.time()
         info["compile_time"] = end_compile_time - start_compile_time
 
-    def exec(self, verbose, info, compile_only=False):
+    def exec(self, verbose, info, compile_only=False, override=None):
         self.compile(info)
         if verbose > 1:
             self.print_compilation_info()

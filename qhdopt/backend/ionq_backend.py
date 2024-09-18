@@ -121,7 +121,7 @@ class IonQBackend(Backend):
         end_compile_time = time.time()
         info["compile_time"] = end_compile_time - start_compile_time
 
-    def exec(self, verbose, info):
+    def exec(self, verbose, info, override):
         if verbose > 1:
             self.print_compilation_info()
 
