@@ -4,7 +4,7 @@ from typing import List, Dict, Union, Optional
 from sympy import lambdify, Symbol, Function
 import jax.numpy as jnp
 
-from qhdopt.backend import dwave_backend, ionq_backend, qutip_backend, baseline_backend
+from qhdopt.backend import dwave_backend, ionq_backend, qutip_backend
 from qhdopt.response import Response
 from qhdopt.utils.function_preprocessing_utils import decompose_function
 
@@ -150,23 +150,6 @@ class QHD_Base:
             penalty_coefficient=penalty_coefficient,
             time_discretization=time_discretization,
             gamma=gamma,
-        )
-
-    def baseline_setup(
-        self,
-        shots: int = 100,
-    ) -> None:
-        """
-        Sets up a classical baseline backend.
-
-        Args:
-            shots: Number of sampling shots for baseline method.
-        """
-        self.backend = baseline_backend.BaselineBackend(
-            dimension=self.dimension,
-            univariate_dict=self.univariate_dict,
-            bivariate_dict=self.bivariate_dict,
-            shots=shots,
         )
 
     def compile_only(self):

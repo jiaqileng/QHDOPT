@@ -2,7 +2,6 @@ import numpy as np
 def spin_to_bitstring(spin_list):
     # spin_list is a dict
     list_len = len(spin_list)
-    binary_vec = np.empty((list_len))
     bitstring = []
     for k in np.arange(list_len):
         if spin_list[k] == 1:

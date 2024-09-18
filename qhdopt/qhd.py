@@ -214,26 +214,6 @@ class QHD:
         self.shots = shots
         self.post_processing_method = post_processing_method
 
-    def baseline_setup(
-            self,
-            shots: int = 100,
-            post_processing_method: str = "TNC",
-    ):
-        """
-        Sets up the baseline configuration for classical optimization comparison.
-
-        Args:
-            shots: The number of solution samples to generate.
-            post_processing_method: The classical optimization algorithm to use.
-        """
-        func, syms = self.generate_affined_func()
-        self.qhd_base = QHD_Base(func, syms, self.info)
-        self.qhd_base.baseline_setup(
-            shots=shots
-        )
-        self.shots = shots
-        self.post_processing_method = post_processing_method
-
     def affine_transformation(self, x: np.ndarray) -> np.ndarray:
         """
         Applies an affine transformation to the input array.

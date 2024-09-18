@@ -2,9 +2,8 @@ from typing import Tuple
 
 from qhdopt import QHD
 import numpy as np
-from simuq.dwave import DWaveProvider
 
-from qhdopt.utils.benchmark_utils import calc_h_and_J
+from examples.benchmark_utils import calc_h_and_J
 
 
 def convert_key(tup: Tuple) -> str:
