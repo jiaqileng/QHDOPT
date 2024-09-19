@@ -5,9 +5,9 @@
 [![codecov](https://codecov.io/gh/jiaqileng/QHDOPT/graph/badge.svg?token=Z1GMD2AD8R)](https://codecov.io/gh/jiaqileng/QHDOPT)
 [![Docs](https://img.shields.io/badge/docs-website-blue.svg)](https://jiaqileng.github.io/QHDOPT/)
 <br>
-**QHDOPT** (QHD-based OPTimizer) is a software package for nonconvex optimization.
+**QHDOPT** (QHD-based OPTimizer) is a software package for nonlinear optimization.
 
-QHDOPT implements a quantum optimization algorithm named [Quantum Hamiltonian Descent](https://jiaqileng.github.io/quantum-hamiltonian-descent/) (QHD) on available quantum computers (such as the [D-Wave systems](https://www.dwavesys.com/)). QHD is a quantum-upgraded version of gradient descent (GD). Unlike the classical GD, QHD demonstrates a significant advantage in solving nonconvex optimization problems.
+QHDOPT implements a quantum optimization algorithm named [Quantum Hamiltonian Descent](https://jiaqileng.github.io/quantum-hamiltonian-descent/) (QHD) on available quantum computers (such as the [D-Wave systems](https://www.dwavesys.com/)). QHD is a quantum-upgraded version of gradient descent (GD). Unlike the classical GD, QHD demonstrates a significant advantage in solving nonconvex and nonlinear optimization problems.
 
 <p align="center">
 <img src="img/workflow.png" alt="QHDOPT Workflow" width="600">
