@@ -49,7 +49,6 @@ def decompose_function(func, syms):
                 key=lambda factor: symbol_to_int[list(factor.free_symbols)[0]],
             )
 
-            symbol_labels = []
             f = [1, 1]
             sym0id = list(reordered_factors[0].free_symbols)[0]
             for factor in reordered_factors :
@@ -58,9 +57,8 @@ def decompose_function(func, syms):
                     raise Exception(f"Found undecomposable term: {factor}")
                 ind = 0 if syms[0] == sym0id else 1
                 f[ind] *= factor
-                
+            
             f1, f2 = f
-            print(f1, f2)
             
             bivariate_terms.setdefault((index1, index2), []).append(
                 (
