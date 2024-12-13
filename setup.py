@@ -22,7 +22,6 @@ setup(
         "numpy<1.28.0",
         "jaxlib",
         "qutip<5",
-        "simuq>=0.3.1",
         "dwave-system",
         "qiskit",
         "matplotlib"
