@@ -19,8 +19,13 @@ setup(
         "jax[cpu]",
         "sympy",
         "scipy>=1.10.1,<1.12",
-        "numpy",
+        "numpy<1.28.0",
         "jaxlib",
+        "qutip<5",
+        "simuq>=0.3.1",
+        "dwave-system",
+        "qiskit",
+        "matplotlib"
     ],
     extras_require={
         "dev": ["tox"],

@@ -1,8 +1,6 @@
 import time
 import warnings
 from typing import List, Tuple, Union, Optional, Callable
-
-import cyipopt
 import jax.numpy as jnp
 import numpy as np
 import sympy
@@ -11,7 +9,6 @@ from scipy.optimize import Bounds, minimize
 from sympy import lambdify
 from sympy.core.function import Function
 from sympy.core.symbol import Symbol
-
 from qhdopt.backend.backend import Backend
 from qhdopt.qhd_base import QHD_Base
 from qhdopt.backend import dwave_backend
@@ -223,26 +220,6 @@ class QHD:
         self.post_processing_method = post_processing_method
         self.max_post_processing_num = max_post_processing_num
 
-    def baseline_setup(
-            self,
-            shots: int = 100,
-            post_processing_method: str = "TNC",
-    ):
-        """
-        Sets up the baseline configuration for classical optimization comparison.
-
-        Args:
-            shots: The number of solution samples to generate.
-            post_processing_method: The classical optimization algorithm to use.
-        """
-        func, syms = self.generate_affined_func()
-        self.qhd_base = QHD_Base(func, syms, self.info)
-        self.qhd_base.baseline_setup(
-            shots=shots
-        )
-        self.shots = shots
-        self.post_processing_method = post_processing_method
-
     def affine_transformation(self, x: np.ndarray) -> np.ndarray:
         """
         Applies an affine transformation to the input array.
@@ -286,11 +263,12 @@ class QHD:
         Args:
             guesses: List of guesses to validate.
         """
+        tol=1e-4
         for guess in guesses:
             for i in range(len(self.lb)):
                 lb = self.lb[i]
                 ub = self.lb[i] + self.scaling_factor[i]
-                assert ub >= guess[i] >= lb
+                assert lb - tol <= guess[i] <= ub + tol
 
     def classically_optimize(self, verbose=0, initial_guess=None, num_shots=100, solver="IPOPT") -> Response:
         """
@@ -312,7 +290,7 @@ class QHD:
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
         start_time = time.time()
-        samples, minimizer, minimum, optimize_time = self.classical_optimizer_helper(initial_guess,
+        samples, minimizer, minimum, optimize_time, sample_times = self.classical_optimizer_helper(initial_guess,
                                                                                      bounds,
                                                                                      solver,
                                                                                      self.fun_eval)
@@ -325,6 +303,7 @@ class QHD:
         self.info["backend_time"] = 0
         self.info["refine_status"] = True
         self.info["refining_time"] = end_time - start_time
+        self.info["sample_times"] = sample_times
 
         classical_response = Response(self.info, refined_samples=samples, refined_minimum=minimum,
                                       refined_minimizer=minimizer, func=self.fun_eval)
@@ -338,7 +317,7 @@ class QHD:
 
     def classical_optimizer_helper(self, samples: List[np.ndarray], bounds: Bounds, solver: str,
                                    f: Callable) -> Tuple[
-        List[np.ndarray], np.ndarray, float, float]:
+        List[np.ndarray], np.ndarray, float, float, List]:
         """
         Helper function to optimize a given function classically over a set of samples and within specified bounds.
 
@@ -353,6 +332,7 @@ class QHD:
         """
         num_samples = len(samples)
         opt_samples = []
+        sample_times = []
         minimizer = np.zeros(self.dimension)
         current_best = float("inf")
         f_eval_jit = jit(f)
@@ -363,6 +343,7 @@ class QHD:
             if samples[k] is None:
                 opt_samples.append(None)
                 continue
+            sample_start_time = time.time()
             x0 = jnp.array(samples[k])
             if solver == "TNC":
                 result = minimize(
@@ -374,6 +355,7 @@ class QHD:
                     options={"gtol": 1e-6, "eps": 1e-9},
                 )
             elif solver == "IPOPT":
+                import cyipopt
                 result = cyipopt.minimize_ipopt(
                     f_eval_jit,
                     x0,
@@ -386,6 +368,7 @@ class QHD:
                 raise Exception(
                     "The Specified Post Processing Method is Not Supported."
                 )
+            sample_times.append(time.time() - sample_start_time)
             opt_samples.append(result.x)
             val = float(f(result.x))
             if val < current_best:
@@ -393,8 +376,9 @@ class QHD:
                 minimizer = result.x
         end_time = time.time()
         post_processing_time = end_time - start_time
+        self.info["sample_times"] = sample_times
 
-        return opt_samples, minimizer, current_best, post_processing_time
+        return opt_samples, minimizer, current_best, post_processing_time, sample_times
 
     def post_process(self) -> Tuple[np.ndarray, float, float]:
         """
@@ -412,7 +396,7 @@ class QHD:
 
         ub = [self.lb[i] + self.scaling_factor[i] for i in range(len(self.lb))]
         bounds = Bounds(np.array(self.lb), np.array(ub))
-        opt_samples, minimizer, current_best, post_processing_time = self.classical_optimizer_helper(
+        opt_samples, minimizer, current_best, post_processing_time, sample_times = self.classical_optimizer_helper(
             samples, bounds, solver, self.fun_eval)
         self.post_processed_samples = opt_samples
         self.info["post_processing_time"] = post_processing_time
@@ -422,7 +406,7 @@ class QHD:
     def compile_only(self) -> Backend:
         return self.qhd_base.compile_only()
 
-    def optimize(self, refine: bool = True, verbose: int = 0) -> Response:
+    def optimize(self, refine: bool = True, verbose: int = 0, override=None) -> Response:
         """
         User-facing function to run QHD on the optimization problem
 
@@ -434,7 +418,7 @@ class QHD:
         Returns:
             Response object containing samples, minimum, minimizer, and other info
         """
-        response = self.qhd_base.optimize(verbose)
+        response = self.qhd_base.optimize(verbose, override)
         self.coarse_minimizer, self.coarse_minimum, self.decoded_samples = self.affine_mapping(
             response.minimizer, response.minimum, response.samples)
         self.info["refine_status"] = refine

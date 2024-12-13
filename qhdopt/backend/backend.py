@@ -209,7 +209,7 @@ class Backend(ABC):
         pass
 
     @abstractmethod
-    def exec(self, verbose: int, info: dict):
+    def exec(self, verbose: int, info: dict, override=None):
         """
         Executes the quantum backend to run QHD
 

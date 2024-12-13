@@ -1,10 +1,13 @@
 # QHDOPT
 
-[![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](https://unitary.fund)
+[![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](https://unitary.fund)<br>
+[![Python CI](https://github.com/jiaqileng/QHDOPT/actions/workflows/python-ci.yml/badge.svg)](https://github.com/jiaqileng/QHDOPT/actions/workflows/python-ci.yml)
+[![codecov](https://codecov.io/gh/jiaqileng/QHDOPT/graph/badge.svg?token=Z1GMD2AD8R)](https://codecov.io/gh/jiaqileng/QHDOPT)
+[![Docs](https://img.shields.io/badge/docs-website-blue.svg)](https://jiaqileng.github.io/QHDOPT/)
+<br>
+**QHDOPT** (QHD-based OPTimizer) is a software package for nonlinear optimization.
 
-**QHDOPT** (QHD-based OPTimizer) is a software package for nonconvex optimization.
-
-QHDOPT implements a quantum optimization algorithm named [Quantum Hamiltonian Descent](https://jiaqileng.github.io/quantum-hamiltonian-descent/) (QHD) on available quantum computers (such as the [D-Wave systems](https://www.dwavesys.com/)). QHD is a quantum-upgraded version of gradient descent (GD). Unlike the classical GD, QHD demonstrates a significant advantage in solving nonconvex optimization problems.
+QHDOPT implements a quantum optimization algorithm named [Quantum Hamiltonian Descent](https://jiaqileng.github.io/quantum-hamiltonian-descent/) (QHD) on available quantum computers (such as the [D-Wave systems](https://www.dwavesys.com/)). QHD is a quantum-upgraded version of gradient descent (GD). Unlike the classical GD, QHD demonstrates a significant advantage in solving nonconvex and nonlinear optimization problems.
 
 <p align="center">
 <img src="img/workflow.png" alt="QHDOPT Workflow" width="600">
@@ -27,7 +30,19 @@ QHDOPT automatically post-processes the results returned by the quantum machines
 
 ## Installation
 
-To install QHDOPT, you can clone this repo and install by
+QHDOPT has a dependency on Ipopt. You may install Ipopt in your conda environment by
+
+```bash
+conda install -c conda-forge cyipopt==1.3.0
+```
+
+To install QHDOPT, you can directly install with `pip` by
+
+```bash
+pip install qhdopt
+```
+
+If you prefer to install from sources, clone this repo and install by
 
 ```bash
 git clone https://github.com/jiaqileng/QHDOPT.git
@@ -35,14 +50,9 @@ cd QHDOPT/
 pip install ".[all]"
 ```
 
-If you want to use Ipopt as post-processor, run the following in your conda environment:
-```
-conda install -c conda-forge cyipopt
-```
-
 ## Usage
 
-Two example notebooks for a jump start are `examples/QP-example.ipynb` and `examples/PO-example.ipynb`. The following illustrates the basic building blocks of QHDOPT and their functionalities briefly.
+Two example notebooks for a jump start are `examples/1_quadratic_programming.ipynb` and `examples/2_nonlinear_programming.ipynb`. The following illustrates the basic building blocks of QHDOPT and their functionalities briefly.
 
 Import QHDOPT by running
 
@@ -77,22 +87,25 @@ minimum = model.optimize()
 The minimal value of $f$ found by QHDOPT is then stored in `minimum`. To print more details in the process, you can run `model.optimize(verbose=1)`.
 
 ## Contact
-Jiaqi Leng [jiaqil@umd.edu](mailto:jiaqil@umd.edu)
+Jiaqi Leng [jiaqil@terpmail.umd.edu](mailto:jiaqil@terpmail.umd.edu)
 
-Yuxiang Peng [ypeng15@umd.edu](mailto:ypeng15@umd.edu)
+Yuxiang Peng [pickspeng@gmail.com](mailto:pickspeng@gmail.com)
 
 ## Contributors
-Samuel Kushnir, Jiaqi Leng, Yuxiang Peng, Lei Fan
+Samuel Kushnir, Jiaqi Leng, Yuxiang Peng, Lei Fan, Xiaodi Wu
 
 ## Citation
 
 If you use QHDOPT in your work, please cite our paper
 
 ```
-@article{kushnir2024qhdopt,
-  title    = {QHDOPT: A Software for Nonlinear Optimization with Quantum Hamiltonian Decent},
-  author   = {Kushnir, Sam and Leng, Jiaqi and Peng, Yuxiang and Fan, Lei and Wu, Xiaodi},
-  journal  = {arXiv preprint arXiv:xxxx.xxxxx},
-  year     = {2024}
+@misc{kushnir2024qhdopt,
+  author    = {Kushnir, Sam and Leng, Jiaqi and Peng, Yuxiang and Fan, Lei and Wu, Xiaodi},
+  publisher = {{INFORMS Journal on Computing}},
+  title     = {{QHDOPT}: A Software for Nonlinear Optimization with {Q}uantum {H}amiltonian {D}escent},
+  year      = {2024},
+  doi       = {10.1287/ijoc.2024.0587.cd},
+  url       = {https://github.com/INFORMSJoC/2024.0587},
+  note      = {Available for download at https://github.com/INFORMSJoC/2024.0587},
 }
 
