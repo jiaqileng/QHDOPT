@@ -39,24 +39,17 @@ def decompose_function(func, syms):
 
             factors = term.as_ordered_factors()
             coefficient = 1
-            i = 0
-            while len(factors[i].free_symbols) == 0:
-                coefficient *= float(N(factors[i]))
-                i += 1
 
-            reordered_factors = sorted(
-                [factors[i] for i in range(i, len(factors))],
-                key=lambda factor: symbol_to_int[list(factor.free_symbols)[0]],
-            )
-
-            f = [1, 1]
-            sym0id = list(reordered_factors[0].free_symbols)[0]
-            for factor in reordered_factors :
-                syms = list(factor.free_symbols)
-                if len(syms) > 1 :
+            f = [1., 1.]
+            for factor in factors:
+                symlist = list(factor.free_symbols)
+                if len(symlist) == 0:
+                    coefficient *= float(N(factor))
+                elif len(symlist) == 1:
+                    symint = symbol_to_int[symlist[0]] - 1
+                    f[symint] *= factor
+                else:
                     raise Exception(f"Found undecomposable term: {factor}")
-                ind = 0 if syms[0] == sym0id else 1
-                f[ind] *= factor
             
             f1, f2 = f
             
