@@ -46,10 +46,15 @@ def decompose_function(func, syms):
                 if len(symlist) == 0:
                     coefficient *= float(N(factor))
                 elif len(symlist) == 1:
-                    symint = symbol_to_int[symlist[0]] - 1
-                    f[symint] *= factor
+                    symint = symbol_to_int[symlist[0]]
+                    if symint == index1:
+                        f[0] *= factor
+                    elif symint == index2:
+                        f[1] *= factor
+                    else:
+                        raise Exception(f"Found multi-variate (>2) term: {term}")
                 else:
-                    raise Exception(f"Found undecomposable term: {factor}")
+                    raise Exception(f"Found undecomposable term: {term}")
             
             f1, f2 = f
             
