@@ -4,7 +4,7 @@ from typing import List, Dict, Union, Optional
 from sympy import lambdify, Symbol, Function
 import jax.numpy as jnp
 
-from qhdopt.backend import dwave_backend, ionq_backend, qutip_backend
+from qhdopt.backend import dwave_backend, ionq_backend, qutip_backend, phisolve_backend
 from qhdopt.response import Response
 from qhdopt.utils.function_preprocessing_utils import decompose_function
 
@@ -150,6 +150,27 @@ class QHD_Base:
             penalty_coefficient=penalty_coefficient,
             time_discretization=time_discretization,
             gamma=gamma,
+        )
+
+    def phisolve_setup(
+        self,
+        resolution: int,
+        shots: int = 100,
+        embedding_scheme: str = "unary",
+        penalty_coefficient: float = 0,
+        penalty_ratio: float = 0.75
+    ) -> None:
+        """
+        """
+        self.backend = phisolve_backend.PhiSolveBackend(
+            resolution=resolution,
+            dimension=self.dimension,
+            univariate_dict=self.univariate_dict,
+            bivariate_dict=self.bivariate_dict,
+            shots=shots,
+            embedding_scheme=embedding_scheme,
+            penalty_coefficient=penalty_coefficient,
+            penalty_ratio=penalty_ratio,
         )
 
     def compile_only(self):
