@@ -4,7 +4,7 @@ from typing import List, Tuple, Union, Optional, Callable
 import jax.numpy as jnp
 import numpy as np
 import sympy
-from jax import grad, jacfwd, jacrev, jit
+from jax import grad, jacfwd, jacrev, jit, config
 from scipy.optimize import Bounds, minimize
 from sympy import lambdify
 from sympy.core.function import Function
@@ -16,6 +16,8 @@ from qhdopt.response import Response
 from qhdopt.utils.function_preprocessing_utils import gen_new_func_with_affine_trans, \
     generate_bounds, quad_to_gen
 
+# Enable float64 in Jax
+config.update("jax_enable_x64", True)
 
 class QHD:
     """
@@ -220,6 +222,31 @@ class QHD:
         self.post_processing_method = post_processing_method
         self.max_post_processing_num = max_post_processing_num
 
+    def phisolve_setup(
+            self,
+            resolution: int,
+            shots: int = 100,
+            embedding_scheme: str = "unary",
+            penalty_coefficient: float = 0,
+            penalty_ratio: float = 0.75,
+            post_processing_method: str = "TNC",
+            max_post_processing_num: int = None,
+    ):
+        """
+        """
+        func, syms = self.generate_affined_func()
+        self.qhd_base = QHD_Base(func, syms, self.info)
+        self.qhd_base.phisolve_setup(
+            resolution=resolution,
+            shots=shots,
+            embedding_scheme=embedding_scheme,
+            penalty_coefficient=penalty_coefficient,
+            penalty_ratio=penalty_ratio
+        )
+        self.shots = shots
+        self.post_processing_method = post_processing_method
+        self.max_post_processing_num = max_post_processing_num
+
     def affine_transformation(self, x: np.ndarray) -> np.ndarray:
         """
         Applies an affine transformation to the input array.
@@ -344,7 +371,7 @@ class QHD:
                 opt_samples.append(None)
                 continue
             sample_start_time = time.time()
-            x0 = jnp.array(samples[k])
+            x0 = jnp.array(samples[k], dtype=jnp.float64)
             if solver == "TNC":
                 result = minimize(
                     f_eval_jit,
