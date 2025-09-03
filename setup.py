@@ -18,7 +18,7 @@ setup(
         "simuq[dwave, ionq, qutip]>=0.3.1",
         "jax[cpu]",
         "sympy",
-        "scipy>=1.10.1,<1.12",
+        "scipy>=1.10.1,<=1.12",
         "numpy<1.28.0",
         "jaxlib",
         "qutip<5",

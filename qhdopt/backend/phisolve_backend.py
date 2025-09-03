@@ -13,7 +13,8 @@ from qhdopt.utils.decoding_utils import binstr_to_bitstr
 from dimod import ising_to_qubo
 from phisolve import PhiMIQP, QIHD, MIQP
 
-
+import jax
+from phisolve.utils.jax_utils import jax_device
 
 class PhiSolveBackend(Backend):
     """
@@ -49,6 +50,8 @@ class PhiSolveBackend(Backend):
         self.penalty_coefficient = penalty_coefficient
         self.penalty_ratio = penalty_ratio
         self.chain_strength_ratio = chain_strength_ratio
+        
+        jax.config.update("jax_platforms", jax_device(device))
 
 
     def calc_penalty_coefficient_and_chain_strength(self) -> Tuple[float, float]:
@@ -90,10 +93,13 @@ class PhiSolveBackend(Backend):
         start_compile_time = time.time()
         h, J = self.dwp.compile(self.qs, chain_strength=.0)
         n_vars = len(h)
-        h = {i: h[i] for i in range(n_vars)}
+        h = {i: -h[i] for i in range(n_vars)}
         qubo_dict, _ = ising_to_qubo(h, J)
         Q = np.zeros((n_vars, n_vars))
         for (i, j), v in qubo_dict.items():
+            if i == j:
+                Q[i, j] = 2 * v
+                continue
             Q[i, j] = v
             Q[j, i] = v
         # self.qihd_backend = QIHD(Q=Q, n_binary_vars=n_vars)
@@ -159,7 +165,7 @@ class PhiSolveBackend(Backend):
 
         # raw_samples = [spin_to_bitstring(result) for result in self.dwp.results()]
 
-        return self.phisolve_response.samples
+        return self.phisolve_response.samples, self.phisolve_response.sample_counts
 
     def calc_h_and_J(self) -> Tuple[List, dict]:
         """

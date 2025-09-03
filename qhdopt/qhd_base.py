@@ -156,21 +156,25 @@ class QHD_Base:
         self,
         resolution: int,
         shots: int = 100,
+        device: str = "cpu",
         embedding_scheme: str = "unary",
         penalty_coefficient: float = 0,
-        penalty_ratio: float = 0.75
+        penalty_ratio: float = 0.75,
+        seed: Optional[int] = None,
     ) -> None:
         """
         """
         self.backend = phisolve_backend.PhiSolveBackend(
             resolution=resolution,
             dimension=self.dimension,
+            device=device,
             univariate_dict=self.univariate_dict,
             bivariate_dict=self.bivariate_dict,
             shots=shots,
             embedding_scheme=embedding_scheme,
             penalty_coefficient=penalty_coefficient,
             penalty_ratio=penalty_ratio,
+            seed=seed,
         )
 
     def compile_only(self):
@@ -192,7 +196,9 @@ class QHD_Base:
             An instance of Response containing optimization results, None if compile_only is True.
         """
         raw_samples = self.backend.exec(verbose=verbose, info=self.info, override=override)
-
+        sample_counts = None
+        if type(raw_samples) is tuple:
+            raw_samples, sample_counts = raw_samples
 
         start_time_decoding = time.time()
         coarse_minimizer, coarse_minimum, self.decoded_samples = self.backend.decoder(raw_samples,
@@ -200,6 +206,6 @@ class QHD_Base:
 
         end_time_decoding = time.time()
         self.info["decoding_time"] = end_time_decoding - start_time_decoding
-        qhd_response = Response(self.info, self.decoded_samples, coarse_minimum, coarse_minimizer)
+        qhd_response = Response(self.info, self.decoded_samples, coarse_minimum, coarse_minimizer, sample_counts)
 
         return qhd_response

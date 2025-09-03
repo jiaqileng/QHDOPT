@@ -1,6 +1,6 @@
 class Response:
     def __init__(self, info,
-                 coarse_samples=None, coarse_minimum=None, coarse_minimizer=None,
+                 coarse_samples=None, coarse_minimum=None, coarse_minimizer=None, sample_counts=None,
                  refined_samples=None, refined_minimum=None, refined_minimizer=None, func=None):
         self.coarse_samples = coarse_samples
         self.coarse_minimum = coarse_minimum
@@ -11,12 +11,13 @@ class Response:
         self.samples = self.refined_samples if self.refined_samples is not None else self.coarse_samples
         self.minimizer = self.refined_minimizer if refined_minimizer is not None else self.coarse_minimizer
         self.minimum = self.refined_minimum if refined_minimum is not None else self.coarse_minimum
+        self.sample_counts = sample_counts if sample_counts is not None else [1] * len(self.samples)
         self.info = info
         self.func = func
 
     def get_percentage_in_embedding_subspace(self):
-        number_in_subspace = sum([0 if el is None else 1 for el in self.samples])
-        return number_in_subspace / len(self.samples)
+        number_in_subspace = sum([0 if el is None else cnt for (el, cnt) in zip(self.samples, self.sample_counts)])
+        return number_in_subspace / sum(self.sample_counts)
 
     def get_success_probability(self, tol=1e-3, minimum=None):
         if self.func == None:
@@ -25,10 +26,10 @@ class Response:
         if minimum is None:
             minimum = self.minimum
         successes = 0
-        for sample in self.samples:
+        for (sample, cnt) in zip(self.samples, self.sample_counts):
             if sample is not None and abs(self.func(sample) - minimum) < tol:
-                successes +=1
-        return successes / len(self.samples)
+                successes += cnt
+        return successes / sum(self.sample_counts)
 
 
     def print_solver_info(self):

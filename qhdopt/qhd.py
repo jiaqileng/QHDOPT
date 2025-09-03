@@ -16,6 +16,9 @@ from qhdopt.response import Response
 from qhdopt.utils.function_preprocessing_utils import gen_new_func_with_affine_trans, \
     generate_bounds, quad_to_gen
 
+import jax
+from phisolve.utils.jax_utils import jax_device
+
 # Enable float64 in Jax
 config.update("jax_enable_x64", True)
 
@@ -48,6 +51,7 @@ class QHD:
         if len(syms) != len(func.free_symbols):
             warnings.warn("The number of function free symbols does not match the number of syms.",
                           RuntimeWarning)
+        jax.config.update("jax_platforms", jax_device("cpu"))
 
     def generate_affined_func(self) -> Tuple[Function, List[Symbol]]:
         """
@@ -226,22 +230,28 @@ class QHD:
             self,
             resolution: int,
             shots: int = 100,
+            device: str = "cpu",
             embedding_scheme: str = "unary",
             penalty_coefficient: float = 0,
             penalty_ratio: float = 0.75,
             post_processing_method: str = "TNC",
             max_post_processing_num: int = None,
+            seed: Optional[int] = None,
     ):
         """
         """
+        jax.config.update("jax_platforms", jax_device(device))
+
         func, syms = self.generate_affined_func()
         self.qhd_base = QHD_Base(func, syms, self.info)
         self.qhd_base.phisolve_setup(
             resolution=resolution,
             shots=shots,
+            device=device,
             embedding_scheme=embedding_scheme,
             penalty_coefficient=penalty_coefficient,
-            penalty_ratio=penalty_ratio
+            penalty_ratio=penalty_ratio,
+            seed=seed
         )
         self.shots = shots
         self.post_processing_method = post_processing_method
@@ -456,12 +466,12 @@ class QHD:
             self.info["refined_minimum"] = refined_minimum
             self.info["refining_time"] = end_time_finetuning - start_time_finetuning
             qhd_response = Response(self.info, self.decoded_samples, self.coarse_minimum,
-                                    self.coarse_minimizer,
+                                    self.coarse_minimizer, response.sample_counts,
                                     self.post_processed_samples, refined_minimum, refined_minimizer,
                                     self.fun_eval)
         else:
             qhd_response = Response(self.info, self.decoded_samples, self.coarse_minimum,
-                                    self.coarse_minimizer, self.fun_eval)
+                                    self.coarse_minimizer, response.sample_counts, self.fun_eval)
 
         if verbose > 0:
             qhd_response.print_time_info()
