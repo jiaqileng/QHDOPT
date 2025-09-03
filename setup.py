@@ -15,13 +15,13 @@ setup(
     packages=find_namespace_packages(where="."),
     package_dir={"": "."},
     install_requires=[
+        "simuq[dwave, ionq, qutip]>=0.3.1",
         "jax[cpu]",
         "sympy",
-        "scipy>=1.10.1,<1.12",
+        "scipy>=1.10.1,<=1.12",
         "numpy<1.28.0",
         "jaxlib",
         "qutip<5",
-        "simuq>=0.3.1",
         "dwave-system",
         "qiskit",
         "matplotlib"

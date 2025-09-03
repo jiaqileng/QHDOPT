@@ -39,15 +39,25 @@ def decompose_function(func, syms):
 
             factors = term.as_ordered_factors()
             coefficient = 1
-            i = 0
-            while len(factors[i].free_symbols) == 0:
-                coefficient *= float(N(factors[i]))
-                i += 1
 
-            f1, f2 = sorted(
-                [factors[i] for i in range(i, len(factors))],
-                key=lambda factor: symbol_to_int[list(factor.free_symbols)[0]],
-            )
+            f = [1., 1.]
+            for factor in factors:
+                symlist = list(factor.free_symbols)
+                if len(symlist) == 0:
+                    coefficient *= float(N(factor))
+                elif len(symlist) == 1:
+                    symint = symbol_to_int[symlist[0]]
+                    if symint == index1:
+                        f[0] *= factor
+                    elif symint == index2:
+                        f[1] *= factor
+                    else:
+                        raise Exception(f"Found multi-variate (>2) term: {term}")
+                else:
+                    raise Exception(f"Found undecomposable term: {term}")
+            
+            f1, f2 = f
+            
             bivariate_terms.setdefault((index1, index2), []).append(
                 (
                     coefficient,
